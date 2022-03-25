@@ -1,0 +1,900 @@
+
+//  CIRCLES & TRIANGLES:
+//    - LITTLE CIRCLE: They appear at all WaveTrend wave crossings.
+//    - GREEN CIRCLE: The wavetrend waves are at the oversold level and have crossed up (bullish).
+//    - RED CIRCLE: The wavetrend waves are at the overbought level and have crossed down (bearish).
+//    - GOLD/ORANGE CIRCLE: When RSI is below 20, WaveTrend waves are below or equal to -80 and have crossed up after good bullish divergence (DONT BUY WHEN GOLD CIRCLE APPEAR).
+//    - None of these circles are certain signs to trade. It is only information that can help you. 
+//    - PURPLE TRIANGLE: Appear when a bullish or bearish divergence is formed and WaveTrend waves crosses at overbought and oversold points.
+
+//  CONTRIBUTIONS:
+//    - Tip/Idea: Add higher timeframe analysis for bearish/bullish patterns at the current timeframe.
+//    + Bearish/Bullish FLAG:
+//      - MFI+RSI Area are RED (Below 0).
+//      - Wavetrend waves are above 0 and crosses down.
+//      - VWAP Area are below 0 on higher timeframe.
+//      - This pattern reversed becomes bullish.
+//    - Tip/Idea: Check the last heikinashi candle from 2 higher timeframe
+//    + Bearish/Bullish DIAMOND:
+//      - HT Candle is red
+//      - WT > 0 and crossed down
+//@version=4
+strategy(title = 'VuManChu B Scalp Script with Filters', shorttitle = 'VMC Cipher_B_Scalper', overlay=true,  default_qty_type = strategy.percent_of_equity,
+         default_qty_value = 100, pyramiding = 1, initial_capital=10000)
+
+// PARAMETERS {
+// Date Ranges
+from_month = input(defval = 06, title = "From Month", minval = 1, maxval = 12)
+from_day   = input(defval = 01, title = "From Day", minval = 1, maxval = 31)
+from_year  = input(defval = 2021, title = "From Year")
+to_month   = input(defval = 13, title = "To Month", minval = 1, maxval = 12)
+to_day     = input(defval = 20, title = "To Day", minval = 1, maxval = 31)
+to_year    = input(defval = 2022, title = "To Year")
+start  = timestamp(from_year, from_month, from_day, 00, 00)  // backtest start window
+finish = timestamp(to_year, to_month, to_day, 23, 59)        // backtest finish window
+window = time >= start and time <= finish ? true : false // create function "within window of time"
+
+// WaveTrend
+wtShow = input(true, title = 'Show WaveTrend', type = input.bool)
+wtBuyShow = input(true, title = 'Show Buy dots', type = input.bool)
+wtGoldShow = input(false, title = 'Show Gold dots', type = input.bool)
+wtSellShow = input(true, title = 'Show Sell dots', type = input.bool)
+wtDivShow = input(false, title = 'Show Div. dots', type = input.bool)
+vwapShow = input(false, title = 'Show Fast WT', type = input.bool)
+wtChannelLen = input(9, title = 'WT Channel Length', type = input.integer)
+wtAverageLen = input(12, title = 'WT Average Length', type = input.integer)
+wtMASource = input(hlc3, title = 'WT MA Source', type = input.source)
+wtMALen = input(3, title = 'WT MA Length', type = input.integer)
+//wtFilter = input(true, title='Use LA Crypto Pitrate Filters', type = input.bool)
+
+// WaveTrend Overbought & Oversold lines
+obLevel = input(53, title = 'WT Overbought Level 1', type = input.integer)
+obLevel2 = input(60, title = 'WT Overbought Level 2', type = input.integer)
+obLevel3 = input(100, title = 'WT Overbought Level 3', type = input.integer)
+osLevel = input(-53, title = 'WT Oversold Level 1', type = input.integer)
+osLevel2 = input(-60, title = 'WT Oversold Level 2', type = input.integer)
+osLevel3 = input(-75, title = 'WT Oversold Level 3', type = input.integer)
+
+// Divergence WT
+wtShowDiv = input(false, title = 'Show WT Regular Divergences', type = input.bool)
+wtShowHiddenDiv = input(false, title = 'Show WT Hidden Divergences', type = input.bool)
+showHiddenDiv_nl = input(true, title = 'Not apply OB/OS Limits on Hidden Divergences', type = input.bool)
+wtDivOBLevel = input(45, title = 'WT Bearish Divergence min', type = input.integer)
+wtDivOSLevel = input(-65, title = 'WT Bullish Divergence min', type = input.integer)
+
+// Divergence extra range
+wtDivOBLevel_addshow = input(false, title = 'Show 2nd WT Regular Divergences', type = input.bool)
+wtDivOBLevel_add = input(15, title = 'WT 2nd Bearish Divergence', type = input.integer)
+wtDivOSLevel_add = input(-40, title = 'WT 2nd Bullish Divergence 15 min', type = input.integer)
+
+// RSI+MFI
+rsiMFIShow = input(true, title = 'Show MFI', type = input.bool)
+rsiMFIperiod = input(60,title = 'MFI Period', type = input.integer)
+rsiMFIMultiplier = input(250, title = 'MFI Area multiplier', type = input.float)
+rsiMFIPosY = input(2.5, title = 'MFI Area Y Pos', type = input.float)
+
+// RSI
+rsiShow = input(false, title = 'Show RSI', type = input.bool)
+rsiSRC = input(close, title = 'RSI Source', type = input.source)
+rsiLen = input(14, title = 'RSI Length', type = input.integer)
+rsiOversold = input(30, title = 'RSI Oversold', minval = 50, maxval = 100, type = input.integer)
+rsiOverbought = input(60, title = 'RSI Overbought', minval = 0, maxval = 50, type = input.integer)
+
+// Divergence RSI
+rsiShowDiv = input(false, title = 'Show RSI Regular Divergences', type = input.bool)
+rsiShowHiddenDiv = input(false, title = 'Show RSI Hidden Divergences', type = input.bool)
+rsiDivOBLevel = input(60, title = 'RSI Bearish Divergence min', type = input.integer)
+rsiDivOSLevel = input(30, title = 'RSI Bullish Divergence min', type = input.integer)
+
+// RSI Stochastic
+stochShow = input(false, title = 'Show Stochastic RSI', type = input.bool)
+stochUseLog = input(true, title=' Use Log?', type = input.bool)
+stochAvg = input(false, title='Use Average of both K & D', type = input.bool)
+stochSRC = input(close, title = 'Stochastic RSI Source', type = input.source)
+stochLen = input(14, title = 'Stochastic RSI Length', type = input.integer)
+stochRsiLen = input(14, title = 'RSI Length ', type = input.integer)
+stochKSmooth = input(3, title = 'Stochastic RSI K Smooth', type = input.integer)
+stochDSmooth = input(3, title = 'Stochastic RSI D Smooth', type = input.integer)
+
+// Divergence stoch
+stochShowDiv = input(false, title = 'Show Stoch Regular Divergences', type = input.bool)
+stochShowHiddenDiv = input(false, title = 'Show Stoch Hidden Divergences', type = input.bool)
+
+// Schaff Trend Cycle
+tcLine = input(false, title="Show Schaff TC line", type=input.bool)
+tcSRC = input(close, title = 'Schaff TC Source', type = input.source)
+tclength = input(10, title="Schaff TC", type=input.integer)
+tcfastLength = input(23, title="Schaff TC Fast Lenght", type=input.integer)
+tcslowLength = input(50, title="Schaff TC Slow Length", type=input.integer)
+tcfactor = input(0.5, title="Schaff TC Factor", type=input.float)
+
+// Sommi Flag
+sommiFlagShow = input(false, title = 'Show Sommi flag', type = input.bool)
+sommiShowVwap = input(false, title = 'Show Sommi F. Wave', type = input.bool)
+sommiVwapTF = input('720', title = 'Sommi F. Wave timeframe', type = input.string)
+sommiVwapBearLevel = input(0, title = 'F. Wave Bear Level (less than)', type = input.integer)
+sommiVwapBullLevel = input(0, title = 'F. Wave Bull Level (more than)', type = input.integer)
+soomiFlagWTBearLevel = input(0, title = 'WT Bear Level (more than)', type = input.integer) 
+soomiFlagWTBullLevel = input(0, title = 'WT Bull Level (less than)', type = input.integer) 
+soomiRSIMFIBearLevel = input(0, title = 'Money flow Bear Level (less than)', type = input.integer) 
+soomiRSIMFIBullLevel = input(0, title = 'Money flow Bull Level (more than)', type = input.integer) 
+
+// Sommi Diamond
+sommiDiamondShow = input(false, title = 'Show Sommi diamond', type = input.bool)
+sommiHTCRes = input('60', title = 'HTF Candle Res. 1', type = input.string)
+sommiHTCRes2 = input('240', title = 'HTF Candle Res. 2', type = input.string)
+soomiDiamondWTBearLevel = input(0, title = 'WT Bear Level (More than)', type = input.integer)
+soomiDiamondWTBullLevel = input(0, title = 'WT Bull Level (Less than)', type = input.integer)
+
+// macd Colors
+macdWTColorsShow = input(false, title = 'Show MACD Colors', type = input.bool)
+macdWTColorsTF = input('240', title = 'MACD Colors MACD TF', type = input.string)
+
+darkMode = input(false, title = 'Dark mode', type = input.bool)
+
+
+// Colors
+colorRed = #ff0000
+colorPurple = #e600e6
+colorGreen = #3fff00
+colorOrange = #e2a400
+colorYellow = #ffe500
+colorWhite = #ffffff
+colorPink = #ff00f0
+colorBluelight = #31c0ff
+
+colorWT1 = #90caf9
+colorWT2 = #0d47a1
+
+colorWT2_ = #131722
+
+colormacdWT1a = #4caf58
+colormacdWT1b = #af4c4c
+colormacdWT1c = #7ee57e
+colormacdWT1d = #ff3535
+
+colormacdWT2a = #305630
+colormacdWT2b = #310101
+colormacdWT2c = #132213
+colormacdWT2d = #770000
+
+// } PARAMETERS
+
+// Get EMAs
+offset = input(title="Offset", defval=0, minval=-500, maxval=500)
+ema50 = ema(close,50)
+plot(ema50, title="EMA50", color=color.blue, offset=offset)
+ema200 = ema(close, 200)
+plot(ema200, title="EMA200", color=color.red, offset=offset)
+ema50pullback = close > ema50 - (ema50 * 0.05) and close < ema50 + (ema50 * 0.05)
+
+
+//EMA Filters
+emaLong = close > ema200 and ema50pullback
+emaShort = close < ema200 and ema50pullback
+
+
+// FUNCTIONS {
+  
+// Divergences 
+f_top_fractal(src) => src[4] < src[2] and src[3] < src[2] and src[2] > src[1] and src[2] > src[0]
+f_bot_fractal(src) => src[4] > src[2] and src[3] > src[2] and src[2] < src[1] and src[2] < src[0]
+f_fractalize(src) => f_top_fractal(src) ? 1 : f_bot_fractal(src) ? -1 : 0
+
+f_findDivs(src, topLimit, botLimit, useLimits) =>
+    fractalTop = f_fractalize(src) > 0 and (useLimits ? src[2] >= topLimit : true) ? src[2] : na
+    fractalBot = f_fractalize(src) < 0 and (useLimits ? src[2] <= botLimit : true) ? src[2] : na
+    highPrev = valuewhen(fractalTop, src[2], 0)[2]
+    highPrice = valuewhen(fractalTop, high[2], 0)[2]
+    lowPrev = valuewhen(fractalBot, src[2], 0)[2]
+    lowPrice = valuewhen(fractalBot, low[2], 0)[2]
+    bearSignal = fractalTop and high[2] > highPrice and src[2] < highPrev
+    bullSignal = fractalBot and low[2] < lowPrice and src[2] > lowPrev
+    bearDivHidden = fractalTop and high[2] < highPrice and src[2] > highPrev
+    bullDivHidden = fractalBot and low[2] > lowPrice and src[2] < lowPrev
+    [fractalTop, fractalBot, lowPrev, bearSignal, bullSignal, bearDivHidden, bullDivHidden]
+        
+// RSI+MFI
+f_rsimfi(_period, _multiplier, _tf) => security(syminfo.tickerid, _tf, sma(((close - open) / (high - low)) * _multiplier, _period) - rsiMFIPosY)
+   
+// WaveTrend
+f_wavetrend(src, chlen, avg, malen, tf) =>
+    tfsrc = security(syminfo.tickerid, tf, src)
+    esa = ema(tfsrc, chlen)
+    de = ema(abs(tfsrc - esa), chlen)
+    ci = (tfsrc - esa) / (0.015 * de)
+    wt1 = security(syminfo.tickerid, tf, ema(ci, avg))
+    wt2 = security(syminfo.tickerid, tf, sma(wt1, malen))
+    wtVwap = wt1 - wt2
+    wtOversold = wt2 <= osLevel
+    wtOverbought = wt2 >= obLevel
+    wtCross = cross(wt1, wt2)
+    wtCrossUp = wt2 - wt1 <= 0
+    wtCrossDown = wt2 - wt1 >= 0
+    wtCrosslast = cross(wt1[2], wt2[2])
+    wtCrossUplast = wt2[2] - wt1[2] <= 0
+    wtCrossDownlast = wt2[2] - wt1[2] >= 0
+    [wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCrosslast, wtCrossUplast, wtCrossDownlast, wtVwap]
+
+// Schaff Trend Cycle
+f_tc(src, length, fastLength, slowLength) =>
+    ema1 = ema(src, fastLength)
+    ema2 = ema(src, slowLength)
+    macdVal = ema1 - ema2	
+    alpha = lowest(macdVal, length)
+    beta = highest(macdVal, length) - alpha
+    gamma = (macdVal - alpha) / beta * 100
+    gamma := beta > 0 ? gamma : nz(gamma[1])
+    delta = gamma
+    delta := na(delta[1]) ? delta : delta[1] + tcfactor * (gamma - delta[1])
+    epsilon = lowest(delta, length)
+    zeta = highest(delta, length) - epsilon
+    eta = (delta - epsilon) / zeta * 100
+    eta := zeta > 0 ? eta : nz(eta[1])
+    stcReturn = eta
+    stcReturn := na(stcReturn[1]) ? stcReturn : stcReturn[1] + tcfactor * (eta - stcReturn[1])
+    stcReturn
+
+// Stochastic RSI
+f_stochrsi(_src, _stochlen, _rsilen, _smoothk, _smoothd, _log, _avg) =>
+    src = _log ? log(_src) : _src
+    rsi = rsi(src, _rsilen)
+    kk = sma(stoch(rsi, rsi, rsi, _stochlen), _smoothk)
+    d1 = sma(kk, _smoothd)
+    avg_1 = avg(kk, d1)
+    k = _avg ? avg_1 : kk
+    [k, d1]
+
+// MACD
+f_macd(src, fastlen, slowlen, sigsmooth, tf) =>
+    fast_ma = security(syminfo.tickerid, tf, ema(src, fastlen))
+    slow_ma = security(syminfo.tickerid, tf, ema(src, slowlen))
+    macd = fast_ma - slow_ma,
+    signal = security(syminfo.tickerid, tf, sma(macd, sigsmooth))
+    hist = macd - signal
+    [macd, signal, hist]
+
+// MACD Colors on WT    
+f_macdWTColors(tf) =>
+    hrsimfi = f_rsimfi(rsiMFIperiod, rsiMFIMultiplier, tf)
+    [macd, signal, hist] = f_macd(close, 28, 42, 9, macdWTColorsTF)
+    macdup = macd >= signal
+    macddown = macd <= signal
+    macdWT1Color = macdup ? hrsimfi > 0 ? colormacdWT1c : colormacdWT1a : macddown ? hrsimfi < 0 ? colormacdWT1d : colormacdWT1b : na
+    macdWT2Color = macdup ? hrsimfi < 0 ? colormacdWT2c : colormacdWT2a : macddown ? hrsimfi < 0 ? colormacdWT2d : colormacdWT2b : na 
+    [macdWT1Color, macdWT2Color]
+    
+// Get higher timeframe candle
+f_getTFCandle(_tf) => 
+    _open  = security(heikinashi(syminfo.tickerid), _tf, open, barmerge.gaps_off, barmerge.lookahead_on)
+    _close = security(heikinashi(syminfo.tickerid), _tf, close, barmerge.gaps_off, barmerge.lookahead_on)
+    _high  = security(heikinashi(syminfo.tickerid), _tf, high, barmerge.gaps_off, barmerge.lookahead_on)
+    _low   = security(heikinashi(syminfo.tickerid), _tf, low, barmerge.gaps_off, barmerge.lookahead_on)
+    hl2   = (_high + _low) / 2.0
+    newBar = change(_open)
+    candleBodyDir = _close > _open
+    [candleBodyDir, newBar]
+
+// Sommi flag
+f_findSommiFlag(tf, wt1, wt2, rsimfi, wtCross, wtCrossUp, wtCrossDown) =>    
+    [hwt1, hwt2, hwtOversold, hwtOverbought, hwtCross, hwtCrossUp, hwtCrossDown, hwtCrosslast, hwtCrossUplast, hwtCrossDownlast, hwtVwap] = f_wavetrend(wtMASource, wtChannelLen, wtAverageLen, wtMALen, tf)      
+    
+    bearPattern = rsimfi < soomiRSIMFIBearLevel and
+                   wt2 > soomiFlagWTBearLevel and 
+                   wtCross and 
+                   wtCrossDown and 
+                   hwtVwap < sommiVwapBearLevel
+                   
+    bullPattern = rsimfi > soomiRSIMFIBullLevel and 
+                   wt2 < soomiFlagWTBullLevel and 
+                   wtCross and 
+                   wtCrossUp and 
+                   hwtVwap > sommiVwapBullLevel
+    
+    [bearPattern, bullPattern, hwtVwap]
+    
+f_findSommiDiamond(tf, tf2, wt1, wt2, wtCross, wtCrossUp, wtCrossDown) =>
+    [candleBodyDir, newBar] = f_getTFCandle(tf)
+    [candleBodyDir2, newBar2] = f_getTFCandle(tf2)
+    bearPattern = wt2 >= soomiDiamondWTBearLevel and
+                   wtCross and
+                   wtCrossDown and
+                   not candleBodyDir and
+                   not candleBodyDir2                   
+    bullPattern = wt2 <= soomiDiamondWTBullLevel and
+                   wtCross and
+                   wtCrossUp and
+                   candleBodyDir and
+                   candleBodyDir2 
+    [bearPattern, bullPattern]
+ 
+// } FUNCTIONS  
+
+// CALCULATE INDICATORS {
+
+// RSI
+rsi = rsi(rsiSRC, rsiLen)
+rsiColor = rsi <= rsiOversold ? colorGreen : rsi >= rsiOverbought ? colorRed : colorPurple
+
+// RSI + MFI Area
+rsiMFI = f_rsimfi(rsiMFIperiod, rsiMFIMultiplier, timeframe.period)
+rsiMFIColor = rsiMFI > 0 ? #3ee145 : #ff3d2e
+
+// Calculates WaveTrend
+[wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCross_last, wtCrossUp_last, wtCrossDown_last, wtVwap] = f_wavetrend(wtMASource, wtChannelLen, wtAverageLen, wtMALen, timeframe.period)
+ 
+// Stochastic RSI
+[stochK, stochD] = f_stochrsi(stochSRC, stochLen, stochRsiLen, stochKSmooth, stochDSmooth, stochUseLog, stochAvg)
+
+// Schaff Trend Cycle
+tcVal = f_tc(tcSRC, tclength, tcfastLength, tcslowLength)
+
+// Sommi flag
+[sommiBearish, sommiBullish, hvwap] = f_findSommiFlag(sommiVwapTF, wt1, wt2, rsiMFI, wtCross,  wtCrossUp, wtCrossDown)
+
+//Sommi diamond
+[sommiBearishDiamond, sommiBullishDiamond] = f_findSommiDiamond(sommiHTCRes, sommiHTCRes2, wt1, wt2, wtCross, wtCrossUp, wtCrossDown)
+
+// macd colors
+[macdWT1Color, macdWT2Color] = f_macdWTColors(macdWTColorsTF)
+
+// WT Divergences
+[wtFractalTop, wtFractalBot, wtLow_prev, wtBearDiv, wtBullDiv, wtBearDivHidden, wtBullDivHidden] = f_findDivs(wt2, wtDivOBLevel, wtDivOSLevel, true)
+    
+[wtFractalTop_add, wtFractalBot_add, wtLow_prev_add, wtBearDiv_add, wtBullDiv_add, wtBearDivHidden_add, wtBullDivHidden_add] =  f_findDivs(wt2, wtDivOBLevel_add, wtDivOSLevel_add, true)
+[wtFractalTop_nl, wtFractalBot_nl, wtLow_prev_nl, wtBearDiv_nl, wtBullDiv_nl, wtBearDivHidden_nl, wtBullDivHidden_nl] =  f_findDivs(wt2, 0, 0, false)
+
+wtBearDivHidden_ = showHiddenDiv_nl ? wtBearDivHidden_nl : wtBearDivHidden
+wtBullDivHidden_ = showHiddenDiv_nl ? wtBullDivHidden_nl : wtBullDivHidden
+
+wtBearDivColor = (wtShowDiv and wtBearDiv) or (wtShowHiddenDiv and wtBearDivHidden_) ? colorRed : na
+wtBullDivColor = (wtShowDiv and wtBullDiv) or (wtShowHiddenDiv and wtBullDivHidden_) ? colorGreen : na
+
+wtBearDivColor_add = (wtShowDiv and (wtDivOBLevel_addshow and wtBearDiv_add)) or (wtShowHiddenDiv and (wtDivOBLevel_addshow and wtBearDivHidden_add)) ? #9a0202 : na
+wtBullDivColor_add = (wtShowDiv and (wtDivOBLevel_addshow and wtBullDiv_add)) or (wtShowHiddenDiv and (wtDivOBLevel_addshow and wtBullDivHidden_add)) ? #1b5e20 : na
+
+// RSI Divergences
+[rsiFractalTop, rsiFractalBot, rsiLow_prev, rsiBearDiv, rsiBullDiv, rsiBearDivHidden, rsiBullDivHidden] = f_findDivs(rsi, rsiDivOBLevel, rsiDivOSLevel, true)
+[rsiFractalTop_nl, rsiFractalBot_nl, rsiLow_prev_nl, rsiBearDiv_nl, rsiBullDiv_nl, rsiBearDivHidden_nl, rsiBullDivHidden_nl] = f_findDivs(rsi, 0, 0, false)
+
+rsiBearDivHidden_ = showHiddenDiv_nl ? rsiBearDivHidden_nl : rsiBearDivHidden
+rsiBullDivHidden_ = showHiddenDiv_nl ? rsiBullDivHidden_nl : rsiBullDivHidden
+
+rsiBearDivColor = (rsiShowDiv and rsiBearDiv) or (rsiShowHiddenDiv and rsiBearDivHidden_) ? colorRed : na
+rsiBullDivColor = (rsiShowDiv and rsiBullDiv) or (rsiShowHiddenDiv and rsiBullDivHidden_) ? colorGreen : na
+ 
+// Stoch Divergences
+[stochFractalTop, stochFractalBot, stochLow_prev, stochBearDiv, stochBullDiv, stochBearDivHidden, stochBullDivHidden] = f_findDivs(stochK, 0, 0, false)
+
+stochBearDivColor = (stochShowDiv and stochBearDiv) or (stochShowHiddenDiv and stochBearDivHidden) ? colorRed : na
+stochBullDivColor = (stochShowDiv and stochBullDiv) or (stochShowHiddenDiv and stochBullDivHidden) ? colorGreen : na
+
+
+// Small Circles WT Cross
+signalColor = wt2 - wt1 > 0 ? color.red : color.lime
+
+//LA WT BUY/SELL
+wtBuy = wt2 <=0 and wt1 <=0 and rsiMFI >0 and emaLong
+wtSell = wt2 >=0 and wt1 >=0 and rsiMFI <0 and emaShort
+
+// Buy signal.
+buySignal = wtCross and wtCrossUp and wtOversold and wtBuy
+
+// if buySignal
+//     strategy.entry("Long", strategy.long)
+
+
+buySignalDiv = (wtShowDiv and wtBullDiv) or 
+               (wtShowDiv and wtBullDiv_add) or 
+               (stochShowDiv and stochBullDiv) or 
+               (rsiShowDiv and rsiBullDiv)
+    
+buySignalDiv_color = wtBullDiv ? colorGreen : 
+                     wtBullDiv_add ? color.new(colorGreen, 60) : 
+                     rsiShowDiv ? colorGreen : na
+
+// Sell signal
+sellSignal = wtCross and wtCrossDown and wtOverbought and wtSell
+
+// if sellSignal
+//     strategy.entry("Short", strategy.short)
+
+sellSignalDiv = (wtShowDiv and wtBearDiv) or 
+               (wtShowDiv and wtBearDiv_add) or
+               (stochShowDiv and stochBearDiv) or
+               (rsiShowDiv and rsiBearDiv)
+                    
+sellSignalDiv_color = wtBearDiv ? colorRed : 
+                     wtBearDiv_add ? color.new(colorRed, 60) : 
+                     rsiBearDiv ? colorRed : na
+
+// Gold Buy 
+lastRsi = valuewhen(wtFractalBot, rsi[2], 0)[2]
+wtGoldBuy = ((wtShowDiv and wtBullDiv) or (rsiShowDiv and rsiBullDiv)) and
+           wtLow_prev <= osLevel3 and
+           wt2 > osLevel3 and
+           wtLow_prev - wt2 <= -5 and
+           lastRsi < 30           
+          
+// } CALCULATE INDICATORS
+
+
+// DRAW {
+bgcolor(darkMode ? color.new(#000000, 80) : na)
+zLine = plot(0, color = color.new(colorWhite, 50))
+
+//  MFI BAR
+rsiMfiBarTopLine = plot(rsiMFIShow ? -95 : na, title = 'MFI Bar TOP Line', transp = 100)
+rsiMfiBarBottomLine = plot(rsiMFIShow ? -99 : na, title = 'MFI Bar BOTTOM Line', transp = 100)
+fill(rsiMfiBarTopLine, rsiMfiBarBottomLine, title = 'MFI Bar Colors', color = rsiMFIColor, transp = 75)
+
+// WT Areas
+plot(wtShow ? wt1 : na, style = plot.style_area, title = 'WT Wave 1', color = macdWTColorsShow ? macdWT1Color : colorWT1, transp = 0)
+plot(wtShow ? wt2 : na, style = plot.style_area, title = 'WT Wave 2', color = macdWTColorsShow ? macdWT2Color : darkMode ? colorWT2_ : colorWT2 , transp = 20)
+
+// VWAP
+plot(vwapShow ? wtVwap : na, title = 'VWAP', color = colorYellow, style = plot.style_area, linewidth = 2, transp = 45)
+
+// MFI AREA
+rsiMFIplot = plot(rsiMFIShow ? rsiMFI: na, title = 'RSI+MFI Area', color = rsiMFIColor, transp = 20)
+fill(rsiMFIplot, zLine, rsiMFIColor, transp = 40)
+
+// WT Div
+
+plot(series = wtFractalTop ? wt2[2] : na, title = 'WT Bearish Divergence', color = wtBearDivColor, linewidth = 2, offset = -2)
+plot(series = wtFractalBot ? wt2[2] : na, title = 'WT Bullish Divergence', color = wtBullDivColor, linewidth = 2, offset = -2)
+
+// WT 2nd Div
+plot(series = wtFractalTop_add ? wt2[2] : na, title = 'WT 2nd Bearish Divergence', color = wtBearDivColor_add, linewidth = 2, offset = -2)
+plot(series = wtFractalBot_add ? wt2[2] : na, title = 'WT 2nd Bullish Divergence', color = wtBullDivColor_add, linewidth = 2, offset = -2)
+
+// RSI
+plot(rsiShow ? rsi : na, title = 'RSI', color = rsiColor, linewidth = 2, transp = 25)
+
+// RSI Div
+plot(series = rsiFractalTop ? rsi[2] : na, title='RSI Bearish Divergence', color = rsiBearDivColor, linewidth = 1, offset = -2)
+plot(series = rsiFractalBot ? rsi[2] : na, title='RSI Bullish Divergence', color = rsiBullDivColor, linewidth = 1, offset = -2)
+
+// Stochastic RSI
+stochKplot = plot(stochShow ? stochK : na, title = 'Stoch K', color = color.new(#21baf3, 0), linewidth = 2)
+stochDplot = plot(stochShow ? stochD : na, title = 'Stoch D', color = color.new(#673ab7, 60), linewidth = 1)
+stochFillColor = stochK >= stochD ? color.new(#21baf3, 75) : color.new(#673ab7, 60)
+fill(stochKplot, stochDplot, title='KD Fill', color=stochFillColor)
+
+// Stoch Div
+plot(series = stochFractalTop ? stochK[2] : na, title='Stoch Bearish Divergence', color = stochBearDivColor, linewidth = 1, offset = -2)
+plot(series = stochFractalBot ? stochK[2] : na, title='Stoch Bullish Divergence', color = stochBullDivColor, linewidth = 1, offset = -2)
+
+// Schaff Trend Cycle
+plot(tcLine ? tcVal : na, color = color.new(#673ab7, 25), linewidth = 2, title = "Schaff Trend Cycle 1")
+plot(tcLine ? tcVal : na, color = color.new(colorWhite, 50), linewidth = 1, title = "Schaff Trend Cycle 2")
+
+
+// Draw Overbought & Oversold lines
+//plot(obLevel, title = 'Over Bought Level 1', color = colorWhite, linewidth = 1, style = plot.style_circles, transp = 85)
+plot(obLevel2, title = 'Over Bought Level 2', color = colorWhite, linewidth = 1, style = plot.style_stepline, transp = 85)
+plot(obLevel3, title = 'Over Bought Level 3', color = colorWhite, linewidth = 1, style = plot.style_circles, transp = 95)
+
+//plot(osLevel, title = 'Over Sold Level 1', color = colorWhite, linewidth = 1, style = plot.style_circles, transp = 85)
+plot(osLevel2, title = 'Over Sold Level 2', color = colorWhite, linewidth = 1, style = plot.style_stepline, transp = 85)
+
+// Sommi flag
+plotchar(sommiFlagShow and sommiBearish ? 108 : na, title = 'Sommi bearish flag', char='⚑', color = colorPink, location = location.absolute, size = size.tiny, transp = 0)
+plotchar(sommiFlagShow and sommiBullish ? -108 : na, title = 'Sommi bullish flag', char='⚑', color = colorBluelight, location = location.absolute, size = size.tiny, transp = 0)
+plot(sommiShowVwap ? ema(hvwap, 3) : na, title = 'Sommi higher VWAP', color = colorYellow, linewidth = 2, style = plot.style_line, transp = 15)
+
+// Sommi diamond
+plotchar(sommiDiamondShow and sommiBearishDiamond ? 108 : na, title = 'Sommi bearish diamond', char='◆', color = colorPink, location = location.absolute, size = size.tiny, transp = 0)
+plotchar(sommiDiamondShow and sommiBullishDiamond ? -108 : na, title = 'Sommi bullish diamond', char='◆', color = colorBluelight, location = location.absolute, size = size.tiny, transp = 0)
+
+// Circles
+//plot(wtCross ? wt2 : na, title = 'Buy and sell circle', color = signalColor, style = plot.style_circles, linewidth = 3, transp = 15)
+plot(buySignal ? wt2 : na, title = 'Buy circle', color = signalColor, style = plot.style_circles, linewidth = 3, transp = 15)
+plot(sellSignal ? wt2 : na, title = 'sell circle', color = signalColor, style = plot.style_circles, linewidth = 3, transp = 15)
+
+//plotchar(wtBuyShow and buySignal ? -107 : na, title = 'Buy arrow', char='·', color = colorGreen, location = location.absolute, size = size.small, transp = 50)
+//plotchar(wtSellShow and sellSignal ? 105 : na , title = 'Sell arrow', char='·', color = colorRed, location = location.absolute, size = size.small, transp = 50)
+
+plotshape(buySignal ? -107 : na, title="Buy", text="Buy", style=shape.labelup, location=location.bottom, color=color.green, textcolor=color.white, size=size.tiny, transp=0)
+plotshape(sellSignal ? 105 : na, title="Sell", text="Sell",style=shape.labeldown, location=location.top, color=color.red, textcolor=color.white, size=size.tiny, transp=0)
+
+plotchar(wtDivShow and buySignalDiv ? -106 : na, title = 'Divergence buy circle', char='•', text='Buy', color = buySignalDiv_color, location = location.absolute, size = size.small, offset = -2, transp = 15)
+plotchar(wtDivShow and sellSignalDiv ? 106 : na, title = 'Divergence sell circle', char='•', color = sellSignalDiv_color, location = location.absolute, size = size.small, offset = -2, transp = 15)
+
+plotchar(wtGoldBuy and wtGoldShow ? -106 : na, title = 'Gold  buy gold circle', char='•', color = colorOrange, location = location.absolute, size = size.small, offset = -2, transp = 15)
+
+// } DRAW
+
+alertcondition(buySignal, 'Buy Signal', 'Buy, WaveTrend Oversold')
+alertcondition(sellSignal and wtSell, 'Sell Signal', 'Sell, WaveTrend Overbought')
+
+
+longTradesEnabled = input(defval = true, title = 'Long Trades', inline = 'Trades', group = 'Filters')
+shortTradesEnabled = input(defval = true, title = 'Short Trades', tooltip = 'Enable long/short trades.', inline = 'Trades', group = 'Filters')
+
+bool longFiltersApproval = longTradesEnabled and window
+bool shortFiltersApproval = shortTradesEnabled  and window
+
+bool openLongPosition = longFiltersApproval and buySignal
+bool openShortPosition = shortFiltersApproval and sellSignal
+
+
+bool closeLongPosition = longTradesEnabled and sellSignal
+bool closeShortPosition = shortTradesEnabled and buySignal
+
+// INPUT ============================================================================================================
+atrLength = input(defval = 14, title = 'ATR Length', minval = 1, tooltip = 'How many previous candles to use for the ATR calculation.', group = 'General')
+
+// LOGIC ============================================================================================================
+// the open signals when not already into a position
+bool validOpenLongPosition = openLongPosition and not (strategy.position_size > 0)
+bool validOpenShortPosition = openShortPosition and not (strategy.position_size < 0)
+bool validCloseLongPosition = closeLongPosition and strategy.position_size > 0
+bool validCloseShortPosition = closeShortPosition and strategy.position_size < 0
+
+// count how far are the last valid open and regular close signals
+int barsSinceValidOpenLong = nz(barssince(validOpenLongPosition), 999999)
+int barsSinceValidOpenShort = nz(barssince(validOpenShortPosition), 999999)
+int barsSinceCloseLong = nz(barssince(closeLongPosition), 999999)
+int barsSinceCloseShort = nz(barssince(closeShortPosition), 999999)
+
+// take profit has to communicate its execution with the stop loss logic when 'TP' mode is selected
+var bool longTrailingTakeProfitExecuted = false
+var bool shortTrailingTakeProfitExecuted = false
+
+// close price when the valid open signal was triggered
+float openPrice = valuewhen(validOpenLongPosition or validOpenShortPosition, close, 0)
+
+// atr when last open signal was triggered
+float openAtr = valuewhen(validOpenLongPosition or validOpenShortPosition, atr(atrLength), 0)
+
+//
+// ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+// ENTRY ============================================================================================================
+
+// INPUT ============================================================================================================
+enableEntryTrailing = input(defval = false, title = 'Enable Trailing', tooltip = 'Enable or disable the trailing for entry position.', group = 'Entry')
+// devEntryMethod = input(defval = 'ATR', title = 'Deviation Method', options = ['PERC', 'ATR'], tooltip = 'The method to calculate the Deviation for the Trailing Entry.', group = 'Entry')
+devEntryPerc = input(defval = 3.0, title = 'Deviation %', minval = 0.01, maxval = 100, step = 0.05, tooltip = 'The step to follow the price when the open position condition is met.', group = 'Entry') / 100
+devEntryAtrMul = input(defval = 0.5, title = 'Deviation ATR Mul', minval = 0.01, step = 0.05, tooltip = 'Multiplier to be used on the initial entrys` ATR to calculate the step for following the price, when the entry target is reached.', group = 'Entry')
+ctrLongEntrySrc = input(defval = high, title = 'Long/Short Entry Control', inline = 'Control', group = 'Entry')
+ctrShortEntrySrc = input(defval = low, title = '', tooltip = 'The price source to check with the entry target to trigger the entry order for Long/Short position.', inline = 'Control', group = 'Entry')
+
+// LOGIC ============================================================================================================
+var bool enterLongPosition = false
+
+int barsSinceEnterLong = nz(barssince(enterLongPosition), 999999)
+bool openLongIsActive = barsSinceCloseLong >= barsSinceValidOpenLong
+bool enterLongIsPending = barsSinceEnterLong >= barsSinceValidOpenLong
+bool tryEnterLongPosition = longFiltersApproval and openLongIsActive and enterLongIsPending
+
+
+getLongEntryPrice(baseSrc) =>
+    baseSrc + devEntryAtrMul * openAtr
+
+float longEntryPrice = na
+longEntryPrice := if validOpenLongPosition
+    getLongEntryPrice(close)
+else if tryEnterLongPosition
+    min(getLongEntryPrice(low), nz(longEntryPrice[1], 999999))
+else
+    na
+
+enterLongPosition := enableEntryTrailing ? longFiltersApproval and crossover(openLongPosition ? close : ctrLongEntrySrc, longEntryPrice) : openLongPosition
+bool validEnterLongPosition = enterLongPosition and not (strategy.position_size > 0)
+
+var bool enterShortPosition = false
+
+int barsSinceEnterShort = nz(barssince(enterShortPosition), 999999)
+bool openShortIsActive = barsSinceCloseShort >= barsSinceValidOpenShort
+bool enterShortIsPending = barsSinceEnterShort >= barsSinceValidOpenShort
+bool tryEnterShortPosition = shortFiltersApproval and openShortIsActive and enterShortIsPending
+
+getShortEntryPrice(baseSrc) =>
+    baseSrc - devEntryAtrMul * openAtr
+        
+float shortEntryPrice = na
+shortEntryPrice := if validOpenShortPosition
+    getShortEntryPrice(close)
+else if tryEnterShortPosition
+    max(getShortEntryPrice(high), nz(shortEntryPrice[1]))
+else
+    na
+
+enterShortPosition := enableEntryTrailing ? shortFiltersApproval and crossunder(openShortPosition ? close : ctrShortEntrySrc, shortEntryPrice) : openShortPosition
+bool validEnterShortPosition = enterShortPosition and not (strategy.position_size < 0)
+
+// INPUT ============================================================================================================
+enableExitTrailing = input(defval = false, title = 'Enable Trailing', tooltip = 'Enable or disable the trailing for exit position.', group = 'Exit')
+// devExitMethod = input(defval = 'ATR', title = 'Deviation Method', options = ['PERC', 'ATR'], tooltip = 'The method to calculate the Deviation for the Trailing Exit.', group = 'Exit')
+devExitPerc = input(defval = 3.0, title = 'Deviation %', minval = 0.01, maxval = 100, step = 0.05, tooltip = 'The step to follow the price when the close position condition is met.', group = 'Exit') / 100
+devExitAtrMul = input(defval = 0.5, title = 'Deviation ATR Mul', minval = 0.01, step = 0.05, tooltip = 'Multiplier to be used on the initial entrys` ATR to calculate the step for following the price, when the exit target is reached.', group = 'Exit')
+ctrLongExitSrc = input(defval = low, title = 'Long/Short Exit Control', inline = 'Control', group = 'Exit')
+ctrShortExitSrc = input(defval = high, title = '', tooltip = 'The price source to check with the entry target to trigger the entry order for Long/Short position.', inline = 'Control', group = 'Exit')
+
+// LOGIC ============================================================================================================
+var bool exitLongPosition = false
+
+int barsSinceExitLong = nz(barssince(exitLongPosition), 999999)
+bool closeLongIsActive = barsSinceValidOpenLong >= barsSinceCloseLong
+bool exitLongIsPending = barsSinceExitLong >= barsSinceCloseLong
+bool tryExitLongPosition = window and closeLongIsActive and exitLongIsPending
+
+getLongExitPrice(baseSrc) =>
+    baseSrc - devExitAtrMul * openAtr
+
+float longExitPrice = na
+longExitPrice := if validCloseLongPosition
+    getLongExitPrice(close)
+else if tryExitLongPosition
+    max(getLongExitPrice(high), nz(longExitPrice[1], 999999))
+else
+    na
+
+exitLongPosition := enableExitTrailing ? window and crossunder(closeLongPosition ? close : ctrLongExitSrc, longExitPrice) : closeLongPosition
+
+bool longIsActive = enterLongPosition or strategy.position_size > 0 and not exitLongPosition
+
+var bool exitShortPosition = false
+
+int barsSinceExitShort = nz(barssince(exitShortPosition), 999999)
+bool closeShortIsActive = barsSinceValidOpenShort >= barsSinceCloseShort
+bool exitShortIsPending = barsSinceExitShort >= barsSinceCloseShort
+bool tryExitShortPosition = window and closeShortIsActive and exitShortIsPending
+
+getShortExitPrice(baseSrc) =>
+    baseSrc + devExitAtrMul * openAtr
+
+float shortExitPrice = na
+shortExitPrice := if validCloseShortPosition
+    getShortExitPrice(close)
+else if tryExitShortPosition
+    min(getShortExitPrice(low), nz(shortExitPrice[1], 999999))
+else
+    na
+
+exitShortPosition := enableExitTrailing ? window and crossunder(closeShortPosition ? close : ctrShortExitSrc, shortExitPrice) : closeShortPosition
+
+bool shortIsActive = enterShortPosition or strategy.position_size < 0 and not exitShortPosition
+
+// PLOT =============================================================================================================
+var sellColor = color.new(color.red, 0)
+plot(series = enableExitTrailing ? longExitPrice : na, title = 'Long Sell Price', color = sellColor, linewidth = 1, style = plot.style_linebr)
+plot(series = enableExitTrailing ? shortExitPrice : na, title = 'Short Sell Price', color = sellColor, linewidth = 1, style = plot.style_linebr)
+
+//
+// ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+// STOP LOSS ========================================================================================================
+
+// INPUT ============================================================================================================
+// stopLossMethod = input(defval = 'ATR', title = 'Stop Loss Method', options = ['PERC', 'ATR'], tooltip = 'The method to calculate the Stop Loss (percentagewise, based on initial ATR or based on ATR changing over time).', group = 'Stop Loss - Target')
+longTrailingStopLossPerc = input(defval = 7.5, title = 'Long/Short Stop Loss %', minval = 0.05, maxval = 100, step = 0.05, inline = 'Trailing Stop Loss Perc', group = 'Stop Loss - Target') / 100
+shortTrailingStopLossPerc = input(defval = 7.5, title = '', minval = 0.05, maxval = 100, step = 0.05, tooltip = 'The percentage of the price decrease/increase to set the Stop Loss price target for long/short positions.', inline = 'Trailing Stop Loss Perc', group = 'Stop Loss - Target') / 100
+longStopLossAtrMul = input(defval = 3.0, title = 'ATR Long/Short Mul ', minval = 0.1, step = 0.1, inline = 'Trailing Stop Loss ATR Multiplier', group = 'Stop Loss - Target')
+shortStopLossAtrMul = input(defval = 3.0, title = '', minval = 0.1, step = 0.1, tooltip = 'ATR multiplier to be used for the long/short Stop Loss.', inline = 'Trailing Stop Loss ATR Multiplier', group = 'Stop Loss - Target')
+enableStopLossTrailing = input(defval = 'TP', title = 'Enable Trailing', options = ['TP', 'ON', 'OFF'], tooltip = 'Enable the trailing for Stop Loss when Take Profit order is executed (TP) or from the start of the entry order (ON) or not at all (OFF).', group = 'Stop Loss - Trailing')
+breakEvenEnabled = input(defval = false, title = 'Break Even', tooltip = 'When Take Profit price target is hit, move the Stop Loss to the entry price (or to a more strict price defined by the Stop Loss %/ATR Multiplier).', group = 'Stop Loss - Trailing')
+
+// LOGIC ============================================================================================================
+
+getLongStopLossPrice(baseSrc) =>
+    baseSrc - longStopLossAtrMul * openAtr
+
+getLongStopLossPerc(baseSrc) =>
+    (baseSrc - getLongStopLossPrice(baseSrc)) / baseSrc
+    
+// trailing starts when the take profit price is reached if 'TP' mode is set or from the very begining if 'ON' mode is selected
+bool enableLongTakeProfitTrailing = enableStopLossTrailing == 'ON' or enableStopLossTrailing == 'TP' and longTrailingTakeProfitExecuted
+
+// calculate trailing stop loss price when enter long position and peserve its value until the position closes
+float longTrailingStopLossPrice = na
+longTrailingStopLossPrice := if longIsActive
+    if validEnterLongPosition
+        getLongStopLossPrice(openPrice)
+    else
+        stopPrice = getLongStopLossPrice(enableLongTakeProfitTrailing ? high : openPrice)
+        stopPrice := breakEvenEnabled and longTrailingTakeProfitExecuted ? max(stopPrice, openPrice) : stopPrice
+        max(stopPrice, nz(longTrailingStopLossPrice[1]))
+else
+    na
+
+getShortStopLossPrice(baseSrc) =>
+    baseSrc + shortStopLossAtrMul * openAtr
+
+getShortStopLossPerc(baseSrc) =>
+    (getShortStopLossPrice(baseSrc) - baseSrc) / baseSrc
+
+// trailing starts when the take profit price is reached if 'TP' mode is set or from the very begining if 'ON' mode is selected
+bool enableShortTakeProfitTrailing = enableStopLossTrailing == 'ON' or enableStopLossTrailing == 'TP' and shortTrailingTakeProfitExecuted
+
+// calculate trailing stop loss price when enter short position and peserve its value until the position closes
+float shortTrailingStopLossPrice = na
+shortTrailingStopLossPrice := if shortIsActive
+    if validEnterShortPosition
+        getShortStopLossPrice(openPrice)
+    else
+        stopPrice = getShortStopLossPrice(enableShortTakeProfitTrailing ? low : openPrice)
+        stopPrice := breakEvenEnabled and shortTrailingTakeProfitExecuted ? min(stopPrice, openPrice) : stopPrice
+        min(stopPrice, nz(shortTrailingStopLossPrice[1], 999999.9))
+else
+    na
+
+// TAKE PROFIT ======================================================================================================
+
+// INPUT ============================================================================================================
+// takeProfitMethod = input(defval = 'ATR', title = 'Take Profit Method', options = ['PERC', 'ATR', 'RR'], tooltip = 'The method to calculate the Take Profit price.', group = 'Take Profit - Target')
+longTakeProfitPerc = input(defval = 10.0, title = 'Long/Short Take Profit %', minval = 0.05, step = 0.05, inline = 'Take Profit Perc', group = 'Take Profit - Target') / 100
+shortTakeProfitPerc = input(defval = 10.0, title = '', minval = 0.05, step = 0.05, tooltip = 'The percentage of the price increase/decrease to set the take profit price target for long/short positions.', inline = 'Take Profit Perc', group = 'Take Profit - Target') / 100
+longTakeProfitAtrMul = input(defval = 9.0, title = 'ATR Long/Short Mul ', minval = 0.1, step = 0.1, inline = 'Take Profit ATR Multiplier', group = 'Take Profit - Target')
+shortTakeProfitAtrMul = input(defval = 9.0, title = '', minval = 0.1, step = 0.1, tooltip = 'ATR multiplier to be used for the long/short Take Profit.', inline = 'Take Profit ATR Multiplier', group = 'Take Profit - Target')
+longRiskRewardRatio = input(defval = 1.5, title = 'Long/Short RR Ratio ', minval = 0.1, step = 0.1, inline = 'Risk Reward Ratio', group = 'Take Profit - Target')
+shortRiskRewardRatio = input(defval = 1.5, title = '', minval = 0.1, step = 0.1, tooltip = 'The Risk/Reward Ratio to be used for the long/short Take Profit based on the Stop Loss Price.', inline = 'Risk Reward Ratio', group = 'Take Profit - Target')
+
+enableTakeProfitTrailing = input(defval = true, title = 'Enable Trailing', tooltip = 'Enable or disable the trailing for take profit.', group = 'Take Profit - Trailing')
+devTakeProfitMethod = input(defval = 'ATR', title = 'Deviation Method', options = ['PERC', 'ATR'], tooltip = 'The method to calculate the Deviation for the Trailing Take Profit.', group = 'Take Profit - Trailing')
+devTakeProfitPerc = input(defval = 1.0, title = 'Deviation %', minval = 0.01, maxval = 100, step = 0.05, tooltip = 'The percentage wise step to be used for following the price, when the take profit target is reached.', group = 'Take Profit - Trailing') / 100
+devTakeProfitAtrMul = input(defval = 1.0, title = 'Deviation ATR Mul', minval = 0.01, step = 0.05, tooltip = 'Multiplier to be used on the initial entrys` ATR to calculate the step for following the price, when the take profit target is reached.', group = 'Take Profit - Trailing')
+
+// LOGIC ============================================================================================================
+getLongTakeProfitPrice(baseSrc) =>
+    baseSrc + longTakeProfitAtrMul * openAtr
+
+getLongTakeProfitPerc(baseSrc) =>
+    (baseSrc - getLongTakeProfitPrice(baseSrc)) / baseSrc
+
+// calculate take profit price when enter long position and peserve its value until the position closes
+float longTakeProfitPrice = na
+longTakeProfitPrice := if longIsActive and not longTrailingTakeProfitExecuted
+    if validEnterLongPosition
+        getLongTakeProfitPrice(openPrice)
+    else
+        nz(longTakeProfitPrice[1], getLongTakeProfitPrice(close))
+else
+    na
+
+longTrailingTakeProfitExecuted := strategy.position_size > 0 and (longTrailingTakeProfitExecuted[1] or strategy.position_size < strategy.position_size[1] or strategy.position_size[1] == 0 and high >= longTakeProfitPrice)
+
+longTrailingTakeProfitStepTicks = devTakeProfitAtrMul * openAtr / syminfo.mintick
+
+getShortTakeProfitPrice(baseSrc) =>
+    baseSrc - shortTakeProfitAtrMul * openAtr
+    
+getShortTakeProfitPerc(baseSrc) =>
+    (getShortTakeProfitPrice(baseSrc) - baseSrc) / baseSrc
+
+// calculate take profit price when enter short position and peserve its value until the position closes
+float shortTakeProfitPrice = na
+shortTakeProfitPrice := if shortIsActive and not shortTrailingTakeProfitExecuted
+    if validEnterShortPosition
+        getShortTakeProfitPrice(openPrice)
+    else
+        nz(shortTakeProfitPrice[1], getShortTakeProfitPrice(close))
+else
+    na
+
+shortTrailingTakeProfitExecuted := strategy.position_size < 0 and (shortTrailingTakeProfitExecuted[1] or strategy.position_size > strategy.position_size[1] or strategy.position_size[1] == 0 and low <= shortTakeProfitPrice)
+
+shortTrailingTakeProfitStepTicks =  devTakeProfitAtrMul * openAtr / syminfo.mintick
+
+slMult = input(1.5,title = ' Stop Loss Multiplier')
+tpMult = input(2.9, title = ' Take Profit Multiplier')
+float longStopLoss = close - slMult* openAtr
+float longTakeProfit = close + tpMult * openAtr
+
+float shortStopLoss = close + slMult * openAtr
+float shortTakeProfit = close - tpMult * openAtr
+
+// INPUT ============================================================================================================
+takeProfitQuantityPerc = input(defval = 50, title = 'Take Profit Quantity %', minval = 0.0, maxval = 100, step = 1.0, tooltip = 'The percentage of the position that will be withdrawn when the take profit price target is reached.', group = 'Quantity/Risk Management')
+
+riskPerc = input(defval = 2, title = 'Capital at Risk %', minval = 1, tooltip = 'The maximum percentage of the equity to risk in every trade when no leverage is used.', group = "Quantity/Risk Management") / 100
+minTrade = input(defval = 10, title = 'Minimum Trade Price', minval = 1, tooltip = 'The minimum trade price in Quote currency that is allowed in the exchange for a valid new position.', group = "Quantity/Risk Management")
+longLeverage = input(defval = 2, title = 'Leverage Long/Short ', minval = 1, inline = 'Leverage', group = "Quantity/Risk Management")
+shortLeverage = input(defval = 2, title = '', minval = 1, tooltip = 'Leverage factor used to multiply the initial risk quantity of each trade (by borrowing the remaining amount). Thus, the profits and losses are multiplied respectivelly.', inline = 'Leverage', group = "Quantity/Risk Management")
+
+number_long = strategy.equity * riskPerc * longLeverage / getLongStopLossPerc(close)
+higher_long = strategy.equity * longLeverage
+// LOGIC ============================================================================================================
+var int quoteDecimalDigits = max(ceil(-1 * log10(syminfo.mintick * syminfo.pointvalue)), 0)
+
+num_of_decimal_digits(number) =>
+    max(ceil(-1 * log10(number)), 0)
+
+
+floor1(number, precision) =>
+    fact = pow(10,  precision)
+    num = number * fact
+    floor(num) / fact
+
+ceil1(number, precision) =>
+    fact = pow(10,  precision)
+    num = number * fact
+    ceil(num) / fact
+    
+clamp(number, lower, higher, precision) =>
+    ceil1(max(floor1(min(number, higher), precision), lower), precision)
+
+getLongRiskQuoteQuantity() =>
+    clamp(number_long, minTrade, higher_long, quoteDecimalDigits)
+    
+getLongRiskQuoteQuantityPerc() =>
+    getLongRiskQuoteQuantity() / strategy.equity
+
+getLongRiskBaseQuantity() =>
+    getLongRiskQuoteQuantity() / close
+
+float longEntryBaseQuantity = na
+longEntryBaseQuantity := if longIsActive
+    if validOpenLongPosition
+        getLongRiskBaseQuantity()
+    else
+        nz(longEntryBaseQuantity[1], getLongRiskBaseQuantity())
+else
+    na
+
+number_short = strategy.equity * riskPerc * shortLeverage / getShortStopLossPerc(close)
+higher_short = strategy.equity * shortLeverage
+getShortRiskQuoteQuantity() =>
+    clamp(number_short, minTrade, higher_short, quoteDecimalDigits)
+    
+getShortRiskQuoteQuantityPerc() =>
+    getShortRiskQuoteQuantity() / strategy.equity
+
+getShortRiskBaseQuantity() =>
+    getShortRiskQuoteQuantity() / close
+
+float shortEntryBaseQuantity = na
+shortEntryBaseQuantity := if shortIsActive
+    if validOpenShortPosition
+        getShortRiskBaseQuantity()
+    else
+        nz(shortEntryBaseQuantity[1], getShortRiskBaseQuantity())
+else
+    na
+
+// POSITION ORDERS =================================================================================================
+
+// if enterLongPosition
+//     strategy.entry("Entry Long", strategy.long)
+    
+// if enterShortPosition
+//     strategy.entry("Entry Short", strategy.short)
+    
+if enterLongPosition
+    strategy.entry("Entry Long", strategy.long, qty = longEntryBaseQuantity)
+    
+if enterShortPosition
+    strategy.entry("Entry Short", strategy.short, qty = shortEntryBaseQuantity)
+    
+    
+if strategy.position_size > 0
+    strategy.exit("Exit Long", stop = longStopLoss, limit = longTakeProfit )
+    
+if strategy.position_size < 0
+    strategy.exit("Exit short", stop = shortStopLoss, limit = longTakeProfit )
+// strategy.close(id = 'Long Entry', when = exitLongPosition, comment = 'Close Long', stop = longStopLoss, limit = longTakeProfit, alert_message = msgCloseLong)
+
+// close on trend reversal
+// strategy.close(id = 'Short Entry', when = exitShortPosition, comment = 'Close Short', stop = shortStopLoss, limit = shortTakeProfit, alert_message = msgCloseShort)
+
+// getting into LONG position
+// strategy.entry(id = 'Long Entry', strategy.long, qty = longEntryBaseQuantity, when = enterLongPosition, alert_message = msgOpenLong)
+// strategy.entry("Long Entry", strategy.long, qty = qtyLong, when = enterLongPosition, alert_message = msgOpenLong)
+// strategy.entry("Long Entry", strategy.long, qty = longEntryBaseQuantity, when = enterLongPosition, alert_message = msgOpenLong)
+
+// submit exit order for trailing take profit price also set the stop loss for the take profit percentage in case that stop loss it reached first
+// strategy.exit(id = 'Long Take Profit / Stop Loss', from_entry = 'Long Entry', qty_percent = takeProfitQuantityPerc, limit = longTakeProfit, stop = longStopLoss, trail_price = enableTakeProfitTrailing ? longTakeProfitPrice : na, trail_offset = enableTakeProfitTrailing ? longTrailingTakeProfitStepTicks : na, when = longIsActive, alert_message = msgTPSLLong)
+// submit exit order for trailing stop loss price for the remaining percent of the quantity not reserved by the take profit order
+// strategy.exit(id = 'Long Stop Loss', from_entry = 'Long Entry', stop = longStopLoss, when = longIsActive, alert_message = msgSLLong)
+
+// getting into SHORT position
+// strategy.entry('Short Entry',strategy.short,qty=qtyShort, when = enterShortPosition, alert_message = msgOpenShort)
+// strategy.entry('Short Entry',strategy.short, qty = shortEntryBaseQuantity, when = enterShortPosition, alert_message = msgOpenShort)
+// submit exit order for trailing take profit price also set the stop loss for the take profit percentage in case that stop loss it reached first
+// strategy.exit(id = 'Short Take Profit / Stop Loss', from_entry = 'Short Entry', qty_percent = takeProfitQuantityPerc, limit = shortTakeProfit, stop = shortStopLoss, trail_price = enableTakeProfitTrailing ? shortTakeProfitPrice : na, trail_offset = enableTakeProfitTrailing ? shortTrailingTakeProfitStepTicks : na, when = shortIsActive, alert_message = msgTPSLShort)
+// submit exit order for trailing stop loss price for the remaining percent of the quantity not reserved by the take profit order
+// strategy.exit(id = 'Short Stop Loss', from_entry = 'Short Entry', stop = shortStopLoss, when = shortIsActive, alert_message = msgSLShort)
+
+// limit the maximum drawdown
+// strategy.risk.max_drawdown(value = maxDrawdown, type = strategy.percent_of_equity, alert_message = msgMaxDrawdown)
+
