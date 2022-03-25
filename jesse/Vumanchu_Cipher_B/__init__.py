@@ -97,9 +97,6 @@ class Vumanchu_Ciper_B(Strategy):
             {'name': 'slMult', 'title': 'Stop Loss Mult', 'type': float, 'min': 0.1, 'max': 100, 'default': 1.5},
             {'name': 'tpMult', 'title': 'Stop Loss Mult', 'type': float, 'min': 0.1, 'max': 100, 'default': 2.9},
             {'name': 'atr_valu', 'title': 'ATR (Period)', 'type': int, 'min': 1, 'max': 500, 'default': 14},
-slMult = input(1.5,title = ' Stop Loss Multiplier')
-tpMult = input(2.9, title = ' Take Profit Multiplier')
-
 
         ]
 
@@ -160,7 +157,7 @@ tpMult = input(2.9, title = ' Take Profit Multiplier')
     #     bearDivHidden = fractalTop and high[2] < highPrice and src[2] > highPrev
     #     bullDivHidden = fractalBot and low[2] > lowPrice and src[2] < lowPrev
     #     [fractalTop, fractalBot, lowPrev, bearSignal, bullSignal, bearDivHidden, bullDivHidden]
-    def f_findDivs(self, src, topLimit, botLimit, useLimits) -> bool:
+    def f_findDivs(self, src, topLimit, botLimit, useLimits):
         #     fractalTop = f_fractalize(src) > 0 and (useLimits ? src[2] >= topLimit : true) ? src[2] : na
         if useLimits:
             ft_ul = src[2] >= topLimit
@@ -170,7 +167,7 @@ tpMult = input(2.9, title = ' Take Profit Multiplier')
         if ft_ul:
             ft = src[2]
         else:
-            ft = nan
+            ft = math.nan
         fractalTop = self.f_fractalize(src) > 0 and ft
 
         #     fractalBot = f_fractalize(src) < 0 and (useLimits ? src[2] <= botLimit : true) ? src[2] : na
@@ -182,7 +179,7 @@ tpMult = input(2.9, title = ' Take Profit Multiplier')
         if ft_ul:
             ft = src[2]
         else:
-            ft = nan
+            ft = math.nan
         fractalBot = self.f_fractalize(src) < 0 and ft
         
         #     highPrev = valuewhen(fractalTop, src[2], 0)[2]
@@ -211,7 +208,7 @@ tpMult = input(2.9, title = ' Take Profit Multiplier')
         bullDivHidden = fractalBot and self.low[2] < highPrice and src[2] < lowPrev
 
         #     [fractalTop, fractalBot, lowPrev, bearSignal, bullSignal, bearDivHidden, bullDivHidden]
-        return (fractalTop, fractalBot, lowPrev, bearSignal, bullSignal, bearDivHidden, bullDivHidden)
+        return [fractalTop, fractalBot, lowPrev, bearSignal, bullSignal, bearDivHidden, bullDivHidden]
 
     # f_rsimfi(_period, _multiplier, _tf) => security(syminfo.tickerid, _tf, sma(((close - open) / (high - low)) * _multiplier, _period) - rsiMFIPosY)
     def f_rsimfi(self, _period, _multiplier, _tf):
@@ -236,7 +233,7 @@ tpMult = input(2.9, title = ' Take Profit Multiplier')
     #     wtCrossDownlast = wt2[2] - wt1[2] >= 0
     #     [wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCrosslast, wtCrossUplast, wtCrossDownlast, wtVwap]
 
-    def f_wavetrend(self, src, chlen, avg, malen, tf):
+    def f_wavetrend(self, src, chlen, avg, malen):
         #     tfsrc = security(syminfo.tickerid, tf, src)
         #     esa = ema(tfsrc, chlen)
         esa = ti.ema(src, chlen)
@@ -272,7 +269,7 @@ tpMult = input(2.9, title = ' Take Profit Multiplier')
         #     wtCrossDownlast = wt2[2] - wt1[2] >= 0
         wtCrossDownlast = wt2[-2][2] - wt1[-2][2] >=0
         #     [wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCrosslast, wtCrossUplast, wtCrossDownlast, wtVwap]
-        return (wt1[-1], wt2[-1], wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCrosslast, wtCrossUplast, wtCrossDownlast, wtVwap)
+        return [wt1[-1], wt2[-1], wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCrosslast, wtCrossUplast, wtCrossDownlast, wtVwap]
 
     # // Schaff Trend Cycle
     # f_tc(src, length, fastLength, slowLength) =>
@@ -325,7 +322,7 @@ tpMult = input(2.9, title = ' Take Profit Multiplier')
         eta = (delta - epsilon) / zeta * 100
         #     eta := zeta > 0 ? eta : nz(eta[1])
         if zeta > 0:
-            ete = eta
+            eta = eta
         else:
             eta = lib.nz(eta[1])
         #     stcReturn = eta
@@ -370,6 +367,84 @@ tpMult = input(2.9, title = ' Take Profit Multiplier')
     #     signal = security(syminfo.tickerid, tf, sma(macd, sigsmooth))
     #     hist = macd - signal
     #     [macd, signal, hist]
+    def f_macd(self, src, fastlen, slowlen, sigsmooth):
+        fast_ma = ta.ema(src, fastlen)
+        slow_ma = ta.ema(src, slowlen)
+        macd = fast_ma - slow_ma
+        signal = ta.sma(macd, sigsmooth)
+        hist = macd - signal
+        return [macd, signal,hist]
+
+    # // Get higher timeframe candle
+    # f_getTFCandle(_tf) => 
+    #     _open  = security(heikinashi(syminfo.tickerid), _tf, open, barmerge.gaps_off, barmerge.lookahead_on)
+    #     _close = security(heikinashi(syminfo.tickerid), _tf, close, barmerge.gaps_off, barmerge.lookahead_on)
+    #     _high  = security(heikinashi(syminfo.tickerid), _tf, high, barmerge.gaps_off, barmerge.lookahead_on)
+    #     _low   = security(heikinashi(syminfo.tickerid), _tf, low, barmerge.gaps_off, barmerge.lookahead_on)
+    #     hl2   = (_high + _low) / 2.0
+    #     newBar = change(_open)
+    #     candleBodyDir = _close > _open
+    #     [candleBodyDir, newBar]
+    def f_getTFCandle(self):
+        _open = self.open
+        _close = self.close
+        _high = self.high
+        _low = self.low
+        _hl2 = (_high + _low) / 2.0
+        newBar = _open - _open[-1]
+        candleBodyDir = _close > _open
+        return [candleBodyDir, newBar]
+
+    # // Sommi flag
+    # f_findSommiFlag(tf, wt1, wt2, rsimfi, wtCross, wtCrossUp, wtCrossDown) =>    
+    #     [hwt1, hwt2, hwtOversold, hwtOverbought, hwtCross, hwtCrossUp, hwtCrossDown, hwtCrosslast, hwtCrossUplast, hwtCrossDownlast, hwtVwap] = f_wavetrend(wtMASource, wtChannelLen, wtAverageLen, wtMALen, tf)      
+        
+    #     bearPattern = rsimfi < soomiRSIMFIBearLevel and
+    #                 wt2 > soomiFlagWTBearLevel and 
+    #                 wtCross and 
+    #                 wtCrossDown and 
+    #                 hwtVwap < sommiVwapBearLevel
+                    
+    #     bullPattern = rsimfi > soomiRSIMFIBullLevel and 
+    #                 wt2 < soomiFlagWTBullLevel and 
+    #                 wtCross and 
+    #                 wtCrossUp and 
+    #                 hwtVwap > sommiVwapBullLevel
+        
+    #     [bearPattern, bullPattern, hwtVwap]
+    def f_findSommiFlag(self, wt1, wt2, rsimfi, wtCross, wtCrossUp, wtCrossDown):
+        #     [hwt1, hwt2, hwtOversold, hwtOverbought, hwtCross, hwtCrossUp, hwtCrossDown, hwtCrosslast, hwtCrossUplast, hwtCrossDownlast, hwtVwap] = f_wavetrend(wtMASource, wtChannelLen, wtAverageLen, wtMALen, tf)      
+        [hwt1, hwt2, hwtOversold, hwtOverbought, hwtCross, hwtCrossUp, hwtCrossDown, hwtCrosslast, hwtCrossUplast, hwtCrossDownlast, hwtVwap] = self.f_wavetrend(self.vars["wtMASource"], self.vars["wtChannelLen"], self.vars["wtAverageLen"], self.vars["wtMALen"]) 
+
+        bearPattern = rsimfi < self.vars["soomiRSIMFIBearLevel"] and wt2 > self.vars["soomiFlagWTBearLevel"] and wtCross and wtCrossDown and hwtVwap < self.vars["sommiVwapBearLevel"]
+
+                    
+        bullPattern = rsimfi > self.vars["soomiRSIMFIBullLevel"] and wt2 < self.vars["soomiFlagWTBullLevel"] and wtCross and wtCrossUp and hwtVwap > self.vars["sommiVwapBullLevel"]
+        
+        return [bearPattern, bullPattern, hwtVwap]
+
+    # f_findSommiDiamond(tf, tf2, wt1, wt2, wtCross, wtCrossUp, wtCrossDown) =>
+    #     [candleBodyDir, newBar] = f_getTFCandle(tf)
+    #     [candleBodyDir2, newBar2] = f_getTFCandle(tf2)
+    #     bearPattern = wt2 >= soomiDiamondWTBearLevel and
+    #                 wtCross and
+    #                 wtCrossDown and
+    #                 not candleBodyDir and
+    #                 not candleBodyDir2                   
+    #     bullPattern = wt2 <= soomiDiamondWTBullLevel and
+    #                 wtCross and
+    #                 wtCrossUp and
+    #                 candleBodyDir and
+    #                 candleBodyDir2 
+    #     [bearPattern, bullPattern]    
+    def f_findSommiDiamond(self, wt1, wt2, wtCross, wtCrossUp, wtCrossDown):
+        [candleBodyDir, newBar] = self.f_getTFCandle()
+        [candleBodyDir2, newBar2] = self.f_getTFCandle()
+
+        bearPattern = wt2 >= self.vars["soomiDiamondWTBearLevel"] and wtCross and wtCrossDown and not candleBodyDir and not candleBodyDir2  
+
+        bullPattern = wt2 <= self.vars["soomiDiamondWTBullLevel"] and wtCross and wtCrossUp and candleBodyDir and candleBodyDir2 
+        return [bearPattern, bullPattern]
 
 
     def should_long(self) -> bool:
