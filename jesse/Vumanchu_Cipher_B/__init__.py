@@ -1,19 +1,28 @@
 from cmath import nan
+from typing import Union
+
 from jesse.strategies import Strategy, cached
 import jesse.indicators as ta
 from jesse import utils
 import custom_indicators as cta
-from custom_indicators import lib
+import lib
 import numpy as np
 from jesse.helpers import get_candle_source, slice_candles
+import jesse.helpers as jh
+
 import tulipy as ti
 import math
+from wt import wt
+from rsimfi import rsimfi
+import utils as tu
 
  
-class Vumanchu_Ciper_B(Strategy):
+class Vumanchu(Strategy):
 
     def __init__(self):
         super().__init__()
+        self.debug_log              = 1          ## Turn on for debug logging to CSV, 
+        self.price_precision        = 2 		#self._price_precision()
         # self.vars["wtShow"]                         = True          #Show WaveTrend
         # self.vars["wtBuyShow"]                      = True          #Show Buy dots
         # self.vars["wtGoldShow"]                     = False         #Showd Gold dots
@@ -109,8 +118,6 @@ class Vumanchu_Ciper_B(Strategy):
             {'name': 'ema50', 'title': 'EMA 50', 'type': int, 'min': 30, 'max': 100, 'default': 50},
             {'name': 'ema200', 'title': 'EMA 200', 'type': int, 'min': 150, 'max': 400, 'default': 200},
 
-            # {'name': 'usr_risk', 'title':  'Equity Risk (%)', 'type': int, 'min': 1, 'max': 100, 'default': 5},
-
             {'name': 'long_slMult', 'title': 'Long Stop Loss Mult', 'type': float, 'min': 1.0, 'max': 3.0, 'default': 1.5},
             {'name': 'long_tpMult', 'title': 'Long Take Profit Mult', 'type': float, 'min': 2.0, 'max': 6.0, 'default': 2.9},
 
@@ -143,338 +150,28 @@ class Vumanchu_Ciper_B(Strategy):
     
     @property
     def atr(self):
-        return ta.atr(self.candles, self.hp["atr_valu"])
-    
-    # # f_top_fractal(src) => src[4] < src[2] and src[3] < src[2] and src[2] > src[1] and src[2] > src[0]
-    # def f_top_fractal(self, src) -> bool:
-    #     return src[4] < src[2] and src[3] < src[2] and src[2] > src[1] and src[2] > src[0]
+        return ta.atr(self.candles, self.vars["atr_valu"])
 
-    # # f_bot_fractal(src) => src[4] > src[2] and src[3] > src[2] and src[2] < src[1] and src[2] < src[0]
-    # def f_bot_fractal(self, src) -> bool:
-    #     return src[4] > src[2] and src[3] > src[2] and src[2] < src[1] and src[2] < src[0]
-
-    # # f_fractalize(src) => f_top_fractal(src) ? 1 : f_bot_fractal(src) ? -1 : 0
-    # def f_fractalize(self, src):
-    #     if self.f_top_fractal(src):
-    #         return 1
-    #     else:
-    #         if self.f_bot_fractal(src):
-    #             return -1
-    #         else:
-    #             return 0
-    
-    # # f_findDivs(src, topLimit, botLimit, useLimits) =>
-    # #     fractalTop = f_fractalize(src) > 0 and (useLimits ? src[2] >= topLimit : true) ? src[2] : na
-    # #     fractalBot = f_fractalize(src) < 0 and (useLimits ? src[2] <= botLimit : true) ? src[2] : na
-    # #     highPrev = valuewhen(fractalTop, src[2], 0)[2]
-    # #     highPrice = valuewhen(fractalTop, high[2], 0)[2]
-    # #     lowPrev = valuewhen(fractalBot, src[2], 0)[2]
-    # #     lowPrice = valuewhen(fractalBot, low[2], 0)[2]
-    # #     bearSignal = fractalTop and high[2] > highPrice and src[2] < highPrev
-    # #     bullSignal = fractalBot and low[2] < lowPrice and src[2] > lowPrev
-    # #     bearDivHidden = fractalTop and high[2] < highPrice and src[2] > highPrev
-    # #     bullDivHidden = fractalBot and low[2] > lowPrice and src[2] < lowPrev
-    # #     [fractalTop, fractalBot, lowPrev, bearSignal, bullSignal, bearDivHidden, bullDivHidden]
-    # def f_findDivs(self, src, topLimit, botLimit, useLimits):
-    #     #     fractalTop = f_fractalize(src) > 0 and (useLimits ? src[2] >= topLimit : true) ? src[2] : na
-    #     if useLimits:
-    #         ft_ul = src[2] >= topLimit
-    #     else: 
-    #         ft_ul = True
-        
-    #     if ft_ul:
-    #         ft = src[2]
-    #     else:
-    #         ft = math.nan
-    #     fractalTop = self.f_fractalize(src) > 0 and ft
-
-    #     #     fractalBot = f_fractalize(src) < 0 and (useLimits ? src[2] <= botLimit : true) ? src[2] : na
-    #     if useLimits:
-    #         ft_ul = src[2] <= botLimit
-    #     else: 
-    #         ft_ul = True
-        
-    #     if ft_ul:
-    #         ft = src[2]
-    #     else:
-    #         ft = math.nan
-    #     fractalBot = self.f_fractalize(src) < 0 and ft
-        
-    #     #     highPrev = valuewhen(fractalTop, src[2], 0)[2]
-    #     highPrev = lib.valuewhen(fractalTop, src[2], 0)[2]
-
-    #     #     highPrice = valuewhen(fractalTop, high[2], 0)[2]
-    #     highPrice = lib.valuewhen(fractalTop, self.high[2], 0)[2]
-
-        
-    #     #     lowPrev = valuewhen(fractalBot, src[2], 0)[2]
-    #     lowPrev = lib.valuewhen(fractalBot, src[2], 0)[2]
-
-    #     #     lowPrice = valuewhen(fractalBot, low[2], 0)[2]
-    #     lowPrice = lib.valuewhen(fractalBot, self.low[2], 0)[2]
-
-    #     #     bearSignal = fractalTop and high[2] > highPrice and src[2] < highPrev
-    #     bearSignal = fractalTop and self.high[2] > highPrice and src[2] < highPrev
-
-    #     #     bullSignal = fractalBot and low[2] < lowPrice and src[2] > lowPrev
-    #     bullSignal = fractalBot and self.low[2] < lowPrice and src[2] > lowPrev
-
-    #     #     bearDivHidden = fractalTop and high[2] < highPrice and src[2] > highPrev
-    #     bearDivHidden = fractalTop and self.high[2] < highPrice and src[2] > highPrev
-
-    #     #     bullDivHidden = fractalBot and low[2] > lowPrice and src[2] < lowPrev
-    #     bullDivHidden = fractalBot and self.low[2] < highPrice and src[2] < lowPrev
-
-    #     #     [fractalTop, fractalBot, lowPrev, bearSignal, bullSignal, bearDivHidden, bullDivHidden]
-    #     return [fractalTop, fractalBot, lowPrev, bearSignal, bullSignal, bearDivHidden, bullDivHidden]
-
-    # f_rsimfi(_period, _multiplier, _tf) => security(syminfo.tickerid, _tf, sma(((close - open) / (high - low)) * _multiplier, _period) - rsiMFIPosY)
-    def f_rsimfi(self, _period, _multiplier):
-        return ti.sma(((self.close - self.open)/ (self.high - self.low)) * _multiplier, _period) - self.vars["rsiMFIPosY"] 
-
-    #     // WaveTrend
-    # f_wavetrend(src, chlen, avg, malen, tf) =>
-    #     tfsrc = security(syminfo.tickerid, tf, src)
-    #     esa = ema(tfsrc, chlen)
-    #     de = ema(abs(tfsrc - esa), chlen)
-    #     ci = (tfsrc - esa) / (0.015 * de)
-    #     wt1 = security(syminfo.tickerid, tf, ema(ci, avg))
-    #     wt2 = security(syminfo.tickerid, tf, sma(wt1, malen))
-    #     wtVwap = wt1 - wt2
-    #     wtOversold = wt2 <= osLevel
-    #     wtOverbought = wt2 >= obLevel
-    #     wtCross = cross(wt1, wt2)
-    #     wtCrossUp = wt2 - wt1 <= 0
-    #     wtCrossDown = wt2 - wt1 >= 0
-    #     wtCrosslast = cross(wt1[2], wt2[2])
-    #     wtCrossUplast = wt2[2] - wt1[2] <= 0
-    #     wtCrossDownlast = wt2[2] - wt1[2] >= 0
-    #     [wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCrosslast, wtCrossUplast, wtCrossDownlast, wtVwap]
-
-    def f_wavetrend(self, src, chlen, avg, malen):
-        #     tfsrc = security(syminfo.tickerid, tf, src)
-        #     esa = ema(tfsrc, chlen)
-        esa = ta.ema(src, chlen)
-        np.nan_to_num(esa, copy=False)
-        #     de = ema(abs(tfsrc - esa), chlen)
-        de  = ta.ema(abs(src - esa), chlen)
-        np.nan_to_num(de, copy=False)
-        #     ci = (tfsrc - esa) / (0.015 * de)
-        ci  = (src - esa) / (0.015 * de)
-        np.nan_to_num(ci, copy=False)
-        #     wt1 = security(syminfo.tickerid, tf, ema(ci, avg))
-        wt1 = ta.ema(ci, avg)
-        np.nan_to_num(wt1, copy=False)
-        #     wt2 = security(syminfo.tickerid, tf, sma(wt1, malen))
-        wt2 = ta.sma(wt1, malen)
-        np.nan_to_num(wt2, copy=False)
-        #     wtVwap = wt1 - wt2
-        wtVwap = wt1[-1] - wt2[-1]
-        #     wtOversold = wt2 <= osLevel
-        wtOversold = wt2[-1] <= self.vars["osLevel"]
-        #     wtOverbought = wt2 >= obLevel
-        wtOverbought = wt2[-1] >= self.vars["obLevel"]
-        #     wtCross = cross(wt1, wt2)
-        wtCross =  (wt1[-2] <= wt2[-2] and wt1[-1] > wt2[-1]) or (wt1[-2] >= wt2[-2] and wt1[-1] < wt2[-1])
-        #     wtCrossUp = wt2 - wt1 <= 0
-        wtCrossUp = wt2[-1] - wt1[-1] <= 0
-        #     wtCrossDown = wt2 - wt1 >= 0
-        wtCrossDown = wt2[-1] - wt1[-1] >= 0
-        #     wtCrosslast = cross(wt1[2], wt2[2])
-        wtCrosslast = (wt1[-2][2] <= wt2[-2][2] and wt1[-1][2] > wt2[-1][2]) or (wt1[-2][2] >= wt2[-2][2] and wt1[-1][2] < wt2[-1][2])
-        #     wtCrossUplast = wt2[2] - wt1[2] <= 0
-        wtCrossUplast = wt2[-2][2] - wt1[-2][2] <=0
-        #     wtCrossDownlast = wt2[2] - wt1[2] >= 0
-        wtCrossDownlast = wt2[-2][2] - wt1[-2][2] >=0
-        #     [wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCrosslast, wtCrossUplast, wtCrossDownlast, wtVwap]
-        return [wt1[-1], wt2[-1], wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCrosslast, wtCrossUplast, wtCrossDownlast, wtVwap]
-
-    # # // Schaff Trend Cycle
-    # # f_tc(src, length, fastLength, slowLength) =>
-    # #     ema1 = ema(src, fastLength)
-    # #     ema2 = ema(src, slowLength)
-    # #     macdVal = ema1 - ema2	
-    # #     alpha = lowest(macdVal, length)
-    # #     beta = highest(macdVal, length) - alpha
-    # #     gamma = (macdVal - alpha) / beta * 100
-    # #     gamma := beta > 0 ? gamma : nz(gamma[1])
-    # #     delta = gamma
-    # #     delta := na(delta[1]) ? delta : delta[1] + tcfactor * (gamma - delta[1])
-    # #     epsilon = lowest(delta, length)
-    # #     zeta = highest(delta, length) - epsilon
-    # #     eta = (delta - epsilon) / zeta * 100
-    # #     eta := zeta > 0 ? eta : nz(eta[1])
-    # #     stcReturn = eta
-    # #     stcReturn := na(stcReturn[1]) ? stcReturn : stcReturn[1] + tcfactor * (eta - stcReturn[1])
-    # #     stcReturn
-    # def f_tc(self, src, length, fastLength, slowLength):
-    #     #     ema1 = ema(src, fastLength)
-    #     ema1 = ta.ema(src, fastLength)
-    #     #     ema2 = ema(src, slowLength)
-    #     ema2 = ta.ema(src, slowLength)
-    #     #     macdVal = ema1 - ema2	
-    #     macdVal = ema1 - ema2
-    #     #     alpha = lowest(macdVal, length)
-    #     alpha = min(macdVal, length)
-    #     #     beta = highest(macdVal, length) - alpha
-    #     beta = max(macdVal, length) - alpha
-    #     #     gamma = (macdVal - alpha) / beta * 100
-    #     gamma = (macdVal - alpha) / beta * 100
-    #     #     gamma := beta > 0 ? gamma : nz(gamma[1])
-    #     if beta > 0:
-    #         gamma = gamma
-    #     else:
-    #         gamma = lib.nz(gamma[1])
-    #     #     delta = gamma
-    #     delta = gamma
-    #     #     delta := na(delta[1]) ? delta : delta[1] + tcfactor * (gamma - delta[1])
-    #     if lib.na(delta[1]):
-    #         delta = delta
-    #     else:
-    #         delta = delta[1] + self.vars["tcfactor"] * (gamma - delta[1]) 
-    #     #     epsilon = lowest(delta, length)
-    #     epsilon = min(delta, length)
-    #     #     zeta = highest(delta, length) - epsilon
-    #     zeta = max(delta, length) - epsilon
-    #     #     eta = (delta - epsilon) / zeta * 100
-    #     eta = (delta - epsilon) / zeta * 100
-    #     #     eta := zeta > 0 ? eta : nz(eta[1])
-    #     if zeta > 0:
-    #         eta = eta
-    #     else:
-    #         eta = lib.nz(eta[1])
-    #     #     stcReturn = eta
-    #     stcReturn = eta
-    #     #     stcReturn := na(stcReturn[1]) ? stcReturn : stcReturn[1] + tcfactor * (eta - stcReturn[1])
-    #     if lib.na(stcReturn[1]):
-    #         stcReturn = stcReturn
-    #     else:
-    #         stcReturn = stcReturn[1] + self.vars["tcfactor"] * (eta - stcReturn[1])
-    #     #     stcReturn
-    #     return stcReturn
-
-    # def f_stochrsi(self,_src, _stochlen, _rsilen, _smoothk, _smoothd, _log, _avg):
-    #     #     src = _log ? log(_src) : _src
-    #     if _log:
-    #         src = math.log(_src)
-    #     else:
-    #         src = _src
-    #     #     rsi = rsi(src, _rsilen)
-    #     rsi = ta.rsi(src, _rsilen)
-    #     #     kk = sma(stoch(rsi, rsi, rsi, _stochlen), _smoothk)
-    #     kk = ta.sma(ta.stoch(rsi, rsi, rsi, _stochlen), _smoothk)
-    #     #     d1 = sma(kk, _smoothd)
-    #     #     avg_1 = avg(kk, d1)
-    #     #     k = _avg ? avg_1 : kk
-    #     #     [k, d1]
-
-    # # // MACD
-    # # f_macd(src, fastlen, slowlen, sigsmooth, tf) =>
-    # #     fast_ma = security(syminfo.tickerid, tf, ema(src, fastlen))
-    # #     slow_ma = security(syminfo.tickerid, tf, ema(src, slowlen))
-    # #     macd = fast_ma - slow_ma,
-    # #     signal = security(syminfo.tickerid, tf, sma(macd, sigsmooth))
-    # #     hist = macd - signal
-    # #     [macd, signal, hist]
-    # def f_macd(self, src, fastlen, slowlen, sigsmooth):
-    #     fast_ma = ta.ema(src, fastlen)
-    #     slow_ma = ta.ema(src, slowlen)
-    #     macd = fast_ma - slow_ma
-    #     signal = ta.sma(macd, sigsmooth)
-    #     hist = macd - signal
-    #     return [macd, signal,hist]
-
-    # # // Get higher timeframe candle
-    # # f_getTFCandle(_tf) => 
-    # #     _open  = security(heikinashi(syminfo.tickerid), _tf, open, barmerge.gaps_off, barmerge.lookahead_on)
-    # #     _close = security(heikinashi(syminfo.tickerid), _tf, close, barmerge.gaps_off, barmerge.lookahead_on)
-    # #     _high  = security(heikinashi(syminfo.tickerid), _tf, high, barmerge.gaps_off, barmerge.lookahead_on)
-    # #     _low   = security(heikinashi(syminfo.tickerid), _tf, low, barmerge.gaps_off, barmerge.lookahead_on)
-    # #     hl2   = (_high + _low) / 2.0
-    # #     newBar = change(_open)
-    # #     candleBodyDir = _close > _open
-    # #     [candleBodyDir, newBar]
-    # def f_getTFCandle(self):
-    #     _open = self.open
-    #     _close = self.close
-    #     _high = self.high
-    #     _low = self.low
-    #     _hl2 = (_high + _low) / 2.0
-    #     newBar = _open - _open[-1]
-    #     candleBodyDir = _close > _open
-    #     return [candleBodyDir, newBar]
-
-    # # // Sommi flag
-    # # f_findSommiFlag(tf, wt1, wt2, rsimfi, wtCross, wtCrossUp, wtCrossDown) =>    
-    # #     [hwt1, hwt2, hwtOversold, hwtOverbought, hwtCross, hwtCrossUp, hwtCrossDown, hwtCrosslast, hwtCrossUplast, hwtCrossDownlast, hwtVwap] = f_wavetrend(wtMASource, wtChannelLen, wtAverageLen, wtMALen, tf)      
-        
-    # #     bearPattern = rsimfi < soomiRSIMFIBearLevel and
-    # #                 wt2 > soomiFlagWTBearLevel and 
-    # #                 wtCross and 
-    # #                 wtCrossDown and 
-    # #                 hwtVwap < sommiVwapBearLevel
-                    
-    # #     bullPattern = rsimfi > soomiRSIMFIBullLevel and 
-    # #                 wt2 < soomiFlagWTBullLevel and 
-    # #                 wtCross and 
-    # #                 wtCrossUp and 
-    # #                 hwtVwap > sommiVwapBullLevel
-        
-    # #     [bearPattern, bullPattern, hwtVwap]
-    # def f_findSommiFlag(self, wt1, wt2, rsimfi, wtCross, wtCrossUp, wtCrossDown):
-    #     #     [hwt1, hwt2, hwtOversold, hwtOverbought, hwtCross, hwtCrossUp, hwtCrossDown, hwtCrosslast, hwtCrossUplast, hwtCrossDownlast, hwtVwap] = f_wavetrend(wtMASource, wtChannelLen, wtAverageLen, wtMALen, tf)      
-    #     [hwt1, hwt2, hwtOversold, hwtOverbought, hwtCross, hwtCrossUp, hwtCrossDown, hwtCrosslast, hwtCrossUplast, hwtCrossDownlast, hwtVwap] = self.f_wavetrend(self.vars["wtMASource"], self.vars["wtChannelLen"], self.vars["wtAverageLen"], self.vars["wtMALen"]) 
-
-    #     bearPattern = rsimfi < self.vars["soomiRSIMFIBearLevel"] and wt2 > self.vars["soomiFlagWTBearLevel"] and wtCross and wtCrossDown and hwtVwap < self.vars["sommiVwapBearLevel"]
-
-                    
-    #     bullPattern = rsimfi > self.vars["soomiRSIMFIBullLevel"] and wt2 < self.vars["soomiFlagWTBullLevel"] and wtCross and wtCrossUp and hwtVwap > self.vars["sommiVwapBullLevel"]
-        
-    #     return [bearPattern, bullPattern, hwtVwap]
-
-    # # f_findSommiDiamond(tf, tf2, wt1, wt2, wtCross, wtCrossUp, wtCrossDown) =>
-    # #     [candleBodyDir, newBar] = f_getTFCandle(tf)
-    # #     [candleBodyDir2, newBar2] = f_getTFCandle(tf2)
-    # #     bearPattern = wt2 >= soomiDiamondWTBearLevel and
-    # #                 wtCross and
-    # #                 wtCrossDown and
-    # #                 not candleBodyDir and
-    # #                 not candleBodyDir2                   
-    # #     bullPattern = wt2 <= soomiDiamondWTBullLevel and
-    # #                 wtCross and
-    # #                 wtCrossUp and
-    # #                 candleBodyDir and
-    # #                 candleBodyDir2 
-    # #     [bearPattern, bullPattern]    
-    # def f_findSommiDiamond(self, wt1, wt2, wtCross, wtCrossUp, wtCrossDown):
-    #     [candleBodyDir, newBar] = self.f_getTFCandle()
-    #     [candleBodyDir2, newBar2] = self.f_getTFCandle()
-
-    #     bearPattern = wt2 >= self.vars["soomiDiamondWTBearLevel"] and wtCross and wtCrossDown and not candleBodyDir and not candleBodyDir2  
-
-    #     bullPattern = wt2 <= self.vars["soomiDiamondWTBullLevel"] and wtCross and wtCrossUp and candleBodyDir and candleBodyDir2 
-    #     return [bearPattern, bullPattern]
-    
-    # // RSI + MFI Area
-    # rsiMFI = f_rsimfi(rsiMFIperiod, rsiMFIMultiplier, timeframe.period)
     @property
     def rsiMFI(self):
-        return self.f_rsimfi(self.vars["rsiMFIperiod"],self.vars["rsiMFIMultiplier"])
+        rf = rsimfi(self.candles, self.vars["rsiMFIperiod"],self.vars["rsiMFIMultiplier"])
+        rmfi = rf - self.vars["rsiMFIPosY"] 
+        return rmfi
 
     def unit_qty_long(self):
-        risk_loss = self.capital * self.vars["bot_risk"]  / (self.atr * self.hp["long_slMult"] * 100 / self.price) 
+        risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.hp["long_slMult"] * 100 / self.price) 
         return max(0, min(self.capital, risk_loss))
 
     def unit_qty_short(self):
-        risk_loss = self.capital * self.vars["bot_risk"]  / (self.atr * self.hp["short_slMult"]  * 100  / self.price) 
+        risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.hp["short_slMult"]  * 100  / self.price) 
         return max(0, min(self.capital, risk_loss))
 
     def risk_qty_long(self):
-        risk_loss = self.capital * self.vars["bot_risk"]  / (self.atr * self.hp["long_slMult"] * 100) 
+        risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.hp["long_slMult"] * 100) 
         return risk_loss
 
     def risk_qty_short(self):
-        risk_loss = self.capital * self.vars["bot_risk"]  / (self.atr * self.hp["long_slMult"] * 100) 
+        risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.hp["long_slMult"] * 100) 
         return risk_loss
 
 
@@ -482,25 +179,29 @@ class Vumanchu_Ciper_B(Strategy):
     def signal(self):
         signal = None
         # // Calculates WaveTrend
-        [wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtVwap] = cta.wavetrend(self.candles, self.vars["wtChannelLen"], self.vars["wtAverageLen"], self.vars["wtMALen"], self.vars["wtMASource"])
-        
-        # [wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCross_last, wtCrossUp_last, wtCrossDown_last, wtVwap] = self.f_wavetrend(self.vars["wtMASource"], self.vars["wtChannelLen"], self.vars["wtAverageLen"], self.vars["wtMALen"])
-        # wtBuy = wt2 <=0 and wt1 <=0 and rsiMFI >0 and emaLong
-        wtBuy = wt2 <= 0 and wt1 <= 0 and self.rsiMFI > 0 and self.emaLong
-        
-        # wtSell = wt2 >=0 and wt1 >=0 and rsiMFI <0 and emaShort
-        wtSell = wt2 >= 0 and wt1 >= 0 and self.rsiMFI < 0 and self.emaShort
+    
+        [wt1, wt2, wtCross, wtCrossUp, wtCrossDown, wtOversold, wtOverbought] = wt(self.candles, self.vars["wtChannelLen"], self.vars["wtAverageLen"], self.vars["wtMALen"], self.vars["obLevel"], self.vars["osLevel"], self.vars["wtMASource"])
         
         # buySignal = wtCross and wtCrossUp and wtOversold and wtBuy
-        buySignal = wtCross and wtCrossUp and wtOversold and wtBuy
+        if wtCross:
+            if wtCrossUp:
+                if wtOversold:
+                    if wt2[-1] >= 0:
+                        if wt1[-1] <= 0:
+                            if self.rsiMFI > 0:
+                                if self.emaLong:
+                                    signal = "buySignal"
         
         # sellSignal = wtCross and wtCrossDown and wtOverbought and wtSell
-        sellSignal = wtCross and wtCrossDown and wtOverbought and wtSell
+        if wtCross:
+            if wtCrossDown:
+                if wtOverbought:
+                    if wt2[-1] >= 0:
+                        if wt1[-1] >= 0:
+                            if self.rsiMFI > 0:
+                                if self.emaShort:
+                                    signal = "sellSignal"
 
-        if buySignal:
-            signal = 'buySinal'
-        elif sellSignal:
-            signal = 'sellSignal'
         return signal
 
     def openLongPosition(self) -> bool:
@@ -638,20 +339,53 @@ class Vumanchu_Ciper_B(Strategy):
         return self.enterShortPosition and not self.position.is_long
 
     def should_long(self) -> bool:
-        return self.vars["longTradesEnabled"] and self.signal == "buySignal"
+        qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
+        if qty != 0:
+            if self.vars["longTradesEnabled"]:
+                if self.signal == "buySignal":
+                    return True
 
     def should_short(self) -> bool:
-        return self.vars["shortTradesEnabled"] and self.signal == "sellSignal"
+        qty = max(min(round(self.risk_qty_short(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
+        if qty != 0:
+            if self.vars["shortTradesEnabled"]:
+                if self.signal == "sellSignal":
+                    return True
 
     def should_cancel(self) -> bool:
         return True
 
+    def on_first_candle(self):
+        # print("On First Candle")
+        if jh.is_live():
+            self.price_precision = self._price_precision()
+            self.qty_precision = self._qty_precision()
+        else:
+            self.price_precision = 2
+            self.qty_precision = 2
+
+    def on_new_candle(self):
+        if self.debug_log > 0:  
+            self.ts = tu.timestamp_to_gmt7(self.current_candle[0] / 1000)
+        # if self.debug_log >= 5:    
+        #     self.data_log.append([self.index, self.ts, self.open, self.high, self.low, self.close, self.current_candle[5]])
+        return 
+
+    def before(self):
+        # Call on first candle
+        
+        if self.index == 0:
+            self.on_first_candle()
+        self.sliced_candles = np.nan_to_num(jh.slice_candles(self.candles, sequential=True))
+
+        # Call on new candle
+        self.on_new_candle()
+
+
     def go_long(self):
+
         qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
         
-        if qty == 0:
-            return
-
         self.buy = qty, self.price
 
         stop_loss = self.price - self.atr * self.hp["long_slMult"]
@@ -661,10 +395,8 @@ class Vumanchu_Ciper_B(Strategy):
         
 
     def go_short(self):
-        qty = max(min(round(self.risk_qty_short(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
 
-        if qty == 0:
-            return
+        qty = max(min(round(self.risk_qty_short(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
 
         self.sell = qty, self.price
 
