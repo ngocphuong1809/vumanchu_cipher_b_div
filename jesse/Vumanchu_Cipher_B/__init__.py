@@ -4,7 +4,7 @@ from typing import Union
 from jesse.strategies import Strategy, cached
 import jesse.indicators as ta
 from jesse import utils
-import custom_indicators as cta
+# import custom_indicators as cta
 import lib
 import numpy as np
 from jesse.helpers import get_candle_source, slice_candles
