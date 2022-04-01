@@ -33,6 +33,8 @@ class Vumanchu(Strategy):
         self.is_optimising                          = False
         self.params_overdrive                       = True          ## Overwrite params to file, turn off for production, turn on for testing / optimizing
 
+        self.pre_index                              = 0
+
         self.long_sl                                = 0
         self.long_tp                                = 0
         self.short_sl                               = 0
@@ -190,10 +192,12 @@ class Vumanchu(Strategy):
     def atr(self):
         return ta.atr(self.candles, self.vars["atr_valu"])
 
+# f_rsimfi(_period, _multiplier, _tf) => security(syminfo.tickerid, _tf, sma(((close - open) / (high - low)) * _multiplier, _period) - rsiMFIPosY)
     @property
     @cached
     def rsiMFI(self):
         rf = rsimfi(self.candles, self.vars["rsiMFIperiod"],self.vars["rsiMFIMultiplier"])
+        print(rf)
         rmfi = rf - self.vars["rsiMFIPosY"] 
         return rmfi
 
@@ -224,18 +228,15 @@ class Vumanchu(Strategy):
         # buySignal = wtCross and wtCrossUp and wtOversold and wtBuy
         if wtCross and wtCrossUp and wtOversold and wt2[-1] >= 0 and wt1[-1] <= 0 and self.rsiMFI > 0 and self.emaLong:
             signal = "buySignal"
+            cmt = 'LongCond'
 
         
     
         # sellSignal = wtCross and wtCrossDown and wtOverbought and wtSell
         if wtCross and wtCrossDown and wtOverbought and wt2[-1] >= 0 and wt1[-1] >= 0 and self.rsiMFI > 0 and self.emaShort:
             signal = "sellSignal"
-
-        # Debuging
-        if signal == "buySignal":
-            cmt = 'LongCond'
-        elif signal == "sellSignal":
             cmt = 'ShortCond'
+
 
         # Debuging
         # if (self.debug_log == 2 and signal == "sellSignal") or self.debug_log > 2:
@@ -245,8 +246,9 @@ class Vumanchu(Strategy):
         #         cmt, wt1, wt2, wtCross, wtCrossUp, wtCrossDown, wtOversold, wtOverbought, self.rsiMFI])
         
         if self.debug_log >= 1 and (cmt == 'LongCond' or cmt == 'ShortCond'):
-            self.indicator_log.append([self.index, self.ts,\
-                cmt, wt1[-1], wt2[-1], self.rsiMFI])
+            if self.pre_index != self.index:
+                self.indicator_log.append([self.index, self.ts, cmt, wt1[-1], wt2[-1], self.rsiMFI])
+                self.pre_index = self.index
 
         return signal
 
