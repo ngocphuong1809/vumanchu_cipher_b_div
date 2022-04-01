@@ -1,0 +1,4 @@
+//@version=4 
+strategy("backtest", overlay=true, initial_capital=500, commission_type=strategy.commission.percent, commission_value=0.00)
+strategy.entry("1", strategy.short, 0, 2865.11, when = time_close == 1644852600000, comment="L[]")
+strategy.exit("1","1", stop = 2968.22, limit = 2865.11, when = time_close >= 1644865200000)
