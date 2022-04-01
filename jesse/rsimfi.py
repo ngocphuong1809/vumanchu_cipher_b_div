@@ -18,9 +18,6 @@ def rsimfi(candles: np.ndarray, period: int = 60, multiplier: int = 250, sequent
     :return: float | np.ndarray
     """
     candles = slice_candles(candles, sequential)
-    rf = talib.SMA(((candles[:, 2] - candles[:, 1])/(candles[:, 3] - candles[:, 4]))* multiplier)
-
-
-    # res = talib.MFI(candles[:, 3], candles[:, 4], candles[:, 2], candles[:, 5], timeperiod=period)
+    rf = talib.SMA((((candles[:, 2] - candles[:, 1])/(candles[:, 3] - candles[:, 4]))* multiplier), period)
 
     return rf if sequential else rf[-1]
