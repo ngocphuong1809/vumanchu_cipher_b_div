@@ -5,8 +5,7 @@ import talib as ta
 
 from jesse.helpers import get_candle_source, slice_candles
 
-Wavetrend = namedtuple('Wavetrend', ['wt1', 'wt2', 'wtCrossUp', 'wtCrossDown', 'wtOversold', 'wtOverbought', 'wtVwap'])
-
+Wavetrend = namedtuple('Wavetrend', ['wt1', 'wt2', 'wtCross', 'wtCrossUp', 'wtCrossDown', 'wtOversold', 'wtOverbought'])
 
 # Wavetrend indicator ported from:  https://www.tradingview.com/script/Msm4SjwI-VuManChu-Cipher-B-Divergences/
 #                                   https://www.tradingview.com/script/2KE8wTuF-Indicator-WaveTrend-Oscillator-WT/
