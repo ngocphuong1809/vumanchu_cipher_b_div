@@ -533,7 +533,7 @@ truncate(number, decimals) =>
     factor = pow(10, decimals)
     int(number * factor) / factor
     
-slMult = input(1.5,title = ' Stop Loss Multiplier')
+slMult = input(1.6,title = ' Stop Loss Multiplier')
 tpMult = input(2.9, title = ' Take Profit Multiplier')
 float longStopLoss = close - slMult* atr
 float longTakeProfit = close + tpMult * atr
