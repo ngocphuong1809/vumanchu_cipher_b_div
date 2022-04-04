@@ -7,7 +7,7 @@ from jesse.helpers import slice_candles
 
 # f_rsimfi(_period, _multiplier, _tf) => security(syminfo.tickerid, _tf, sma(((close - open) / (high - low)) * _multiplier, _period) - rsiMFIPosY)
 
-def rsimfi(candles: np.ndarray, period: int = 60, multiplier: int = 250, sequential: bool = False) -> Union[float, np.ndarray]:
+def rsimfi(candles: np.ndarray, period: int = 60, multiplier: float = 250, sequential: bool = False) -> Union[float, np.ndarray]:
     """
     MFI - Money Flow Index
 
