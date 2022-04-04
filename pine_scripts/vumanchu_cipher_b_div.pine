@@ -553,10 +553,10 @@ botShortRiskLoss = botBudget * botRisk/ (abs(close - tempShortStop)*100 /close )
 botOrderCoinLong  = truncate(botBudget * botLeverage < botLongRiskLoss? botBudget * botLeverage /close: botLongRiskLoss / close, botBasePrecision)
 botOrderCoinShort = truncate(botBudget * botLeverage < botShortRiskLoss? botBudget * botLeverage /close: botShortRiskLoss / close, botBasePrecision)
 
-if window and buySignal and longTradesEnabled
+if window and buySignal and longTradesEnabled and botOrderCoinLong != 0
     strategy.entry("Entry Long", strategy.long, qty = botOrderCoinLong)
     
-if window and sellSignal and shortTradesEnabled
+if window and sellSignal and shortTradesEnabled and botOrderCoinShort != 0
     strategy.entry("Entry Short", strategy.short, qty = botOrderCoinShort)
     
 if strategy.position_size > 0
