@@ -34,6 +34,7 @@ class Vumanchu(Strategy):
         self.params_overdrive                       = True          ## Overwrite params to file, turn off for production, turn on for testing / optimizing
 
         self.pre_index                              = 0
+        self.qty                                    = 0
 
         self.long_sl                                = 0
         self.long_tp                                = 0
@@ -275,6 +276,7 @@ class Vumanchu(Strategy):
     def go_long(self):
 
         qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
+        self.qty = qty
 
         self.starting_balance = self.capital
         
@@ -290,13 +292,15 @@ class Vumanchu(Strategy):
             self.pine_entryts = self.current_candle[0]
             self.pine_cmt = 'L[' #cmt
             self.data_log.append([self.index, self.ts, self.open, self.close, self.high, self.low, self.current_candle[5], "Entry Long", '',
-                self.starting_balance, self.capital, self.capital - self.starting_balance , self.position.qty, self.long_sl, self.long_tp])
+                self.starting_balance, self.capital, self.capital - self.starting_balance , qty, self.long_sl, self.long_tp])
+        
 
         
 
     def go_short(self):
 
         qty = max(min(round(self.risk_qty_short(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
+        self.qty = qty
         
         self.starting_balance = self.capital
         
@@ -312,7 +316,7 @@ class Vumanchu(Strategy):
             self.pine_entryts = self.current_candle[0]
             self.pine_cmt = 'L[' #cmt
             self.data_log.append([self.index, self.ts, self.open, self.close, self.high, self.low, self.current_candle[5], "Entry Short", '', self.starting_balance,
-                self.capital, self.capital - self.starting_balance , self.position.qty, self.short_sl, self.short_tp])
+                self.capital, self.capital - self.starting_balance , qty, self.short_sl, self.short_tp])
 
     def view_orders(self,orders):
         for order in orders:
@@ -328,10 +332,10 @@ class Vumanchu(Strategy):
         # print(f"Close Position {self.price} {self.short_sl} {self.long_sl}")
 
         if self.debug_log >= 1 and self.short_sl > 0:
-            self.pine_short(self.pine_cmt + "]", self.pine_entryts, self.position.qty, self.current_candle[0], self.short_sl, self.short_tp)
+            self.pine_short(self.pine_cmt + "]", self.pine_entryts, self.qty, self.current_candle[0], self.short_sl, self.short_tp)
    
         if self.debug_log >= 1 and self.long_sl > 0:
-            self.pine_long(self.pine_cmt + "]", self.pine_entryts, self.position.qty, self.current_candle[0], self.long_sl, self.long_tp)
+            self.pine_long(self.pine_cmt + "]", self.pine_entryts, self.qty, self.current_candle[0], self.long_sl, self.long_tp)
 
         price = order.price
         if self.debug_log >= 1:
