@@ -71,12 +71,12 @@ class Vumanchu(Strategy):
         # self.vars["botPricepPrecision"]             = 4             #Bot Order Price Precision
         # self.vars["botBasePrecision"]               = 1             #Bot Order Coin Precision
  
-        self.svars["slMult"]                        = 1.5
+        self.svars["slMult"]                        = 1.6
         self.svars["tpMult"]                        = 2.9
         self.svars["fast_ema"]                      = 50
         self.svars["slow_ema"]                      = 200
 
-        self.lvars["slMult"]                        = 1.5
+        self.lvars["slMult"]                        = 1.6
         self.lvars["tpMult"]                        = 2.9
         self.lvars["fast_ema"]                      = 50
         self.lvars["slow_ema"]                      = 200
@@ -225,15 +225,20 @@ class Vumanchu(Strategy):
     
         [wt1, wt2, wtCross, wtCrossUp, wtCrossDown, wtOversold, wtOverbought] = wt(self.candles, self.vars["wtChannelLen"], self.vars["wtAverageLen"], self.vars["wtMALen"], self.vars["obLevel"], self.vars["osLevel"], self.vars["wtMASource"])
         
+        
+        # //LA WT BUY/SELL
+        # wtBuy = wt2 <=0 and wt1 <=0 and rsiMFI >0 and emaLong
+        # wtSell = wt2 >=0 and wt1 >=0 and rsiMFI <0 and emaShort
+
         # buySignal = wtCross and wtCrossUp and wtOversold and wtBuy
-        if wtCross and wtCrossUp and wtOversold and wt2[-1] >= 0 and wt1[-1] <= 0 and self.rsiMFI > 0 and self.emaLong:
+        if wtCross and wtCrossUp and wtOversold and wt2[-1] <= 0 and wt1[-1] <= 0 and self.rsiMFI > 0 and self.emaLong:
             signal = "buySignal"
             cmt = 'LongCond'
 
         
     
         # sellSignal = wtCross and wtCrossDown and wtOverbought and wtSell
-        if wtCross and wtCrossDown and wtOverbought and wt2[-1] >= 0 and wt1[-1] >= 0 and self.rsiMFI > 0 and self.emaShort:
+        if wtCross and wtCrossDown and wtOverbought and wt2[-1] >= 0 and wt1[-1] >= 0 and self.rsiMFI < 0 and self.emaShort:
             signal = "sellSignal"
             cmt = 'ShortCond'
 
