@@ -523,8 +523,24 @@ longTradesEnabled = input(defval = true, title = 'Long Trades', inline = 'Trades
 shortTradesEnabled = input(defval = true, title = 'Short Trades', tooltip = 'Enable long/short trades.', inline = 'Trades', group = 'Filters')
 
 atrLength = input(defval = 14, title = 'ATR Length', minval = 1, tooltip = 'How many previous candles to use for the ATR calculation.', group = 'General')
-atr = atr(atrLength)
-// float openAtr = valuewhen(validOpenLongPosition or validOpenShortPosition, atr(atrLength), 0)
+
+bool openLongPosition = longTradesEnabled  and window
+bool openShortPosition = shortTradesEnabled and window
+bool closeLongPosition = longTradesEnabled and window
+bool closeShortPosition = shortTradesEnabled and window
+
+// LOGIC ============================================================================================================
+// the open signals when not already into a position
+bool validOpenLongPosition = openLongPosition and not (strategy.position_size > 0)
+bool validOpenShortPosition = openShortPosition and not (strategy.position_size < 0)
+bool validCloseLongPosition = closeLongPosition and strategy.position_size > 0
+bool validCloseShortPosition = closeShortPosition and strategy.position_size < 0
+
+// close price when the valid open signal was triggered
+float openPrice = valuewhen(validOpenLongPosition or validOpenShortPosition, close, 0)
+
+// atr when last open signal was triggered
+float openAtr = valuewhen(validOpenLongPosition or validOpenShortPosition, atr(atrLength), 0)
 
 // truncate() truncates a given number
 // to a certain number of decimals
@@ -535,17 +551,18 @@ truncate(number, decimals) =>
     
 slMult = input(1.6,title = ' Stop Loss Multiplier')
 tpMult = input(2.9, title = ' Take Profit Multiplier')
-float longStopLoss = open - slMult* atr
-float longTakeProfit = open + tpMult * atr
 
-float shortStopLoss = open + slMult * atr
-float shortTakeProfit = open - tpMult * atr
+float longStopLoss = openPrice  - slMult* openAtr
+float longTakeProfit = openPrice + tpMult * openAtr
+
+float shortStopLoss = openPrice + slMult * openAtr
+float shortTakeProfit = openPrice - tpMult * openAtr
 
 
-tempLongStop     = truncate(open - atr*longAtrSLMultipier, botPricePrecision)
-tempLongProfit   = truncate(open + atr*longAtrTPMultipier, botPricePrecision)
-tempShortStop    = truncate(open + atr*shortAtrSLMultipier, botPricePrecision)
-tempShortProfit  = truncate(open - atr*shortAtrTPMultipier, botPricePrecision)
+tempLongStop     = truncate(openPrice - openAtr*longAtrSLMultipier, botPricePrecision)
+tempLongProfit   = truncate(openPrice + openAtr*longAtrTPMultipier, botPricePrecision)
+tempShortStop    = truncate(openPrice + openAtr*shortAtrSLMultipier, botPricePrecision)
+tempShortProfit  = truncate(openPrice - openAtr*shortAtrTPMultipier, botPricePrecision)
 
 float botBudget = strategy.initial_capital + strategy.netprofit   //strategy.equity
 botLongRiskLoss  = botBudget * botRisk/ (abs(close - tempLongStop)*100 /close )
@@ -553,43 +570,14 @@ botShortRiskLoss = botBudget * botRisk/ (abs(close - tempShortStop)*100 /close )
 botOrderCoinLong  = truncate(botBudget * botLeverage < botLongRiskLoss? botBudget * botLeverage /close: botLongRiskLoss / close, botBasePrecision)
 botOrderCoinShort = truncate(botBudget * botLeverage < botShortRiskLoss? botBudget * botLeverage /close: botShortRiskLoss / close, botBasePrecision)
 
-// def unit_qty_long(self):
-//         risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.lvars["slMult"] * 100 / self.price) 
-//         return max(0, min(self.capital, risk_loss))
+enterLongPosition = validOpenLongPosition and buySignal
+enterShortPosition = validOpenShortPosition and sellSignal
 
-// def unit_qty_short(self):
-//     risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.svars["slMult"]  * 100  / self.price) 
-//     return max(0, min(self.capital, risk_loss))
-
-// def risk_qty_long(self):
-//     risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.lvars["slMult"] * 100) 
-//     return risk_loss
-
-// def risk_qty_short(self):
-//     risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.svars["slMult"] * 100) 
-//     return risk_loss
-
-// qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
-// qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
-
-// longRiskLoss = strategy.equity * botRisk / (atr*longAtrSLMultipier*100/open)
-// shortRiskLoss = strategy.equity * botRisk / (atr*shortAtrSLMultipier*100/open)
-// unitQtyLong = max(0, min(strategy.equity, longRiskLoss)
-// unitQtyShort = max(0, min(strategy.equity, shortRiskLoss)
-// riskQtyLong = strategy.equity * botRisk / (atr * longAtrSLMultipier * 100)
-// riskQtyShort = strategy.equity * botRisk / (atr * shortAtrSLMultipier * 100)
-// qtyLong = max(min(round(riskQtyLong, 2),()
-
-
-if window and buySignal and longTradesEnabled
-    strategy.entry("Entry Long", strategy.long, qty = botOrderCoinLong)
+strategy.entry("Entry Long", strategy.long, qty = botOrderCoinLong, when = enterLongPosition)
     
-if window and sellSignal and shortTradesEnabled
-    strategy.entry("Entry Short", strategy.short, qty = botOrderCoinShort)
-    
-if strategy.position_size > 0
-    strategy.exit("Exit Long", stop = longStopLoss, limit = longTakeProfit )
-    
-if strategy.position_size < 0
-    strategy.exit("Exit short", stop = shortStopLoss, limit = longTakeProfit )
+strategy.entry("Entry Short", strategy.short, qty = botOrderCoinShort, when = enterLongPosition)
+
+strategy.exit("Exit Long", stop = longStopLoss, limit = longTakeProfit, when = validCloseLongPosition)
+
+strategy.exit("Exit short", stop = shortStopLoss, limit = longTakeProfit, when = validCloseShortPosition)
 
