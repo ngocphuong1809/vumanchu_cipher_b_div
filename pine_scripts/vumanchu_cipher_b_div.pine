@@ -20,15 +20,15 @@
 //      - WT > 0 and crossed down
 //@version=4
 strategy(title = 'VuManChu B Scalp Script with Filters', shorttitle = 'VMC Cipher_B_Scalper', overlay=true,  default_qty_type = strategy.percent_of_equity,
-         default_qty_value = 100, pyramiding = 1, initial_capital=500)
+         default_qty_value = 100, pyramiding = 1, initial_capital=10000)
 
 // PARAMETERS {
 // Date Ranges
-from_month = input(defval = 06, title = "From Month", minval = 1, maxval = 12)
+from_month = input(defval = 09, title = "From Month", minval = 1, maxval = 12)
 from_day   = input(defval = 01, title = "From Day", minval = 1, maxval = 31)
 from_year  = input(defval = 2021, title = "From Year")
 to_month   = input(defval = 03, title = "To Month", minval = 1, maxval = 12)
-to_day     = input(defval = 20, title = "To Day", minval = 1, maxval = 31)
+to_day     = input(defval = 31, title = "To Day", minval = 1, maxval = 31)
 to_year    = input(defval = 2022, title = "To Year")
 start  = timestamp(from_year, from_month, from_day, 00, 00)  // backtest start window
 finish = timestamp(to_year, to_month, to_day, 23, 59)        // backtest finish window
@@ -535,17 +535,17 @@ truncate(number, decimals) =>
     
 slMult = input(1.6,title = ' Stop Loss Multiplier')
 tpMult = input(2.9, title = ' Take Profit Multiplier')
-float longStopLoss = close - slMult* atr
-float longTakeProfit = close + tpMult * atr
+float longStopLoss = open - slMult* atr
+float longTakeProfit = open + tpMult * atr
 
-float shortStopLoss = close + slMult * atr
-float shortTakeProfit = close - tpMult * atr
+float shortStopLoss = open + slMult * atr
+float shortTakeProfit = open - tpMult * atr
 
 
-tempLongStop     = truncate(close - atr*longAtrSLMultipier, botPricePrecision)
-tempLongProfit   = truncate(close + atr*longAtrTPMultipier, botPricePrecision)
-tempShortStop    = truncate(close + atr*shortAtrSLMultipier, botPricePrecision)
-tempShortProfit  = truncate(close - atr*shortAtrTPMultipier, botPricePrecision)
+tempLongStop     = truncate(open - atr*longAtrSLMultipier, botPricePrecision)
+tempLongProfit   = truncate(open + atr*longAtrTPMultipier, botPricePrecision)
+tempShortStop    = truncate(open + atr*shortAtrSLMultipier, botPricePrecision)
+tempShortProfit  = truncate(open - atr*shortAtrTPMultipier, botPricePrecision)
 
 float botBudget = strategy.initial_capital + strategy.netprofit   //strategy.equity
 botLongRiskLoss  = botBudget * botRisk/ (abs(close - tempLongStop)*100 /close )
@@ -553,10 +553,38 @@ botShortRiskLoss = botBudget * botRisk/ (abs(close - tempShortStop)*100 /close )
 botOrderCoinLong  = truncate(botBudget * botLeverage < botLongRiskLoss? botBudget * botLeverage /close: botLongRiskLoss / close, botBasePrecision)
 botOrderCoinShort = truncate(botBudget * botLeverage < botShortRiskLoss? botBudget * botLeverage /close: botShortRiskLoss / close, botBasePrecision)
 
-if window and buySignal and longTradesEnabled and botOrderCoinLong != 0
+// def unit_qty_long(self):
+//         risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.lvars["slMult"] * 100 / self.price) 
+//         return max(0, min(self.capital, risk_loss))
+
+// def unit_qty_short(self):
+//     risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.svars["slMult"]  * 100  / self.price) 
+//     return max(0, min(self.capital, risk_loss))
+
+// def risk_qty_long(self):
+//     risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.lvars["slMult"] * 100) 
+//     return risk_loss
+
+// def risk_qty_short(self):
+//     risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.svars["slMult"] * 100) 
+//     return risk_loss
+
+// qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
+// qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
+
+// longRiskLoss = strategy.equity * botRisk / (atr*longAtrSLMultipier*100/open)
+// shortRiskLoss = strategy.equity * botRisk / (atr*shortAtrSLMultipier*100/open)
+// unitQtyLong = max(0, min(strategy.equity, longRiskLoss)
+// unitQtyShort = max(0, min(strategy.equity, shortRiskLoss)
+// riskQtyLong = strategy.equity * botRisk / (atr * longAtrSLMultipier * 100)
+// riskQtyShort = strategy.equity * botRisk / (atr * shortAtrSLMultipier * 100)
+// qtyLong = max(min(round(riskQtyLong, 2),()
+
+
+if window and buySignal and longTradesEnabled
     strategy.entry("Entry Long", strategy.long, qty = botOrderCoinLong)
     
-if window and sellSignal and shortTradesEnabled and botOrderCoinShort != 0
+if window and sellSignal and shortTradesEnabled
     strategy.entry("Entry Short", strategy.short, qty = botOrderCoinShort)
     
 if strategy.position_size > 0
