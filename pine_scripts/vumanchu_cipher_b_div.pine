@@ -558,7 +558,6 @@ float longTakeProfit = openPrice + tpMult * openAtr
 float shortStopLoss = openPrice + slMult * openAtr
 float shortTakeProfit = openPrice - tpMult * openAtr
 
-
 tempLongStop     = truncate(openPrice - openAtr*longAtrSLMultipier, botPricePrecision)
 tempLongProfit   = truncate(openPrice + openAtr*longAtrTPMultipier, botPricePrecision)
 tempShortStop    = truncate(openPrice + openAtr*shortAtrSLMultipier, botPricePrecision)
@@ -577,7 +576,7 @@ strategy.entry("Entry Long", strategy.long, qty = botOrderCoinLong, when = enter
     
 strategy.entry("Entry Short", strategy.short, qty = botOrderCoinShort, when = enterLongPosition)
 
-strategy.exit("Exit Long", stop = longStopLoss, limit = longTakeProfit, when = validCloseLongPosition)
+strategy.exit("Exit Long", "Entry Long", stop = longStopLoss, limit = longTakeProfit, when = validCloseLongPosition)
 
-strategy.exit("Exit short", stop = shortStopLoss, limit = longTakeProfit, when = validCloseShortPosition)
+strategy.exit("Exit short", "Entry Short", stop = shortStopLoss, limit = longTakeProfit, when = validCloseShortPosition)
 
