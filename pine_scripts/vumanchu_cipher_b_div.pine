@@ -24,11 +24,11 @@ strategy(title = 'VuManChu B Scalp Script with Filters', shorttitle = 'VMC Ciphe
 
 // PARAMETERS {
 // Date Ranges
-from_month = input(defval = 09, title = "From Month", minval = 1, maxval = 12)
+from_month = input(defval = 08, title = "From Month", minval = 1, maxval = 12)
 from_day   = input(defval = 01, title = "From Day", minval = 1, maxval = 31)
 from_year  = input(defval = 2021, title = "From Year")
-to_month   = input(defval = 03, title = "To Month", minval = 1, maxval = 12)
-to_day     = input(defval = 31, title = "To Day", minval = 1, maxval = 31)
+to_month   = input(defval = 02, title = "To Month", minval = 1, maxval = 12)
+to_day     = input(defval = 28, title = "To Day", minval = 1, maxval = 31)
 to_year    = input(defval = 2022, title = "To Year")
 start  = timestamp(from_year, from_month, from_day, 00, 00)  // backtest start window
 finish = timestamp(to_year, to_month, to_day, 23, 59)        // backtest finish window
@@ -563,20 +563,33 @@ tempLongProfit   = truncate(openPrice + openAtr*longAtrTPMultipier, botPricePrec
 tempShortStop    = truncate(openPrice + openAtr*shortAtrSLMultipier, botPricePrecision)
 tempShortProfit  = truncate(openPrice - openAtr*shortAtrTPMultipier, botPricePrecision)
 
-float botBudget = strategy.initial_capital + strategy.netprofit   //strategy.equity
-botLongRiskLoss  = botBudget * botRisk/ (abs(close - tempLongStop)*100 /close )
-botShortRiskLoss = botBudget * botRisk/ (abs(close - tempShortStop)*100 /close )
-botOrderCoinLong  = truncate(botBudget * botLeverage < botLongRiskLoss? botBudget * botLeverage /close: botLongRiskLoss / close, botBasePrecision)
-botOrderCoinShort = truncate(botBudget * botLeverage < botShortRiskLoss? botBudget * botLeverage /close: botShortRiskLoss / close, botBasePrecision)
+// float botBudget = strategy.initial_capital + strategy.netprofit   //strategy.equity
+botLongRiskLoss  = strategy.equity * botRisk/ (abs(openPrice - longStopLoss)*100 /openPrice )
+botShortRiskLoss = strategy.equity * botRisk/ (abs(openPrice - shortStopLoss)*100 /openPrice )
+botOrderCoinLong  = truncate(strategy.equity * botLeverage < botLongRiskLoss? strategy.equity * botLeverage /openPrice: botLongRiskLoss / openPrice, botBasePrecision)
+botOrderCoinShort = truncate(strategy.equity * botLeverage < botShortRiskLoss? strategy.equity * botLeverage /openPrice: botShortRiskLoss / openPrice, botBasePrecision)
+
+// longRiskLoss = strategy.equity * botRisk / (openAtr * longAtrSLMultipier * 100 / openPrice)
+// shortRiskLoss = strategy.equity * botRisk / (openAtr * shortAtrSLMultipier * 100 / openPrice)
+
+// longUnitQty = max(0, min(strategy.equity, longRiskLoss))
+// shortUnitQty = max(0, min(strategy.equity, shortRiskLoss))
+
+// longRiskQty = botBudget * botRisk / (openAtr * longAtrSLMultipier * 100)
+// shortRiskQty = botBudget * botRisk / (openAtr * shortAtrSLMultipier * 100)
+
+// longQty = max(min(round(longRiskQty, 2), (botBudget * 10 - 1) / openPrice), 0)
+// shortQty = max(min(round(shortRiskQty, 2), (botBudget * 10 - 1) / openPrice), 0)
 
 enterLongPosition = validOpenLongPosition and buySignal
 enterShortPosition = validOpenShortPosition and sellSignal
 
-strategy.entry("Entry Long", strategy.long, qty = botOrderCoinLong, when = enterLongPosition)
+        
+strategy.entry("Entry Long", strategy.long, qty = botOrderCoinLong, limit = longTakeProfit, stop = longStopLoss,  when = enterLongPosition)
     
-strategy.entry("Entry Short", strategy.short, qty = botOrderCoinShort, when = enterLongPosition)
+strategy.entry("Entry Short", strategy.short, qty = botOrderCoinShort, limit = longTakeProfit, stop = shortStopLoss,  when = enterLongPosition)
 
-strategy.exit("Exit Long", "Entry Long", stop = longStopLoss, limit = longTakeProfit, when = validCloseLongPosition)
+strategy.exit("Exit Long", "Entry Long", limit = longTakeProfit, stop = longStopLoss, when = validCloseLongPosition)
 
-strategy.exit("Exit short", "Entry Short", stop = shortStopLoss, limit = longTakeProfit, when = validCloseShortPosition)
+strategy.exit("Exit short", "Entry Short", limit = longTakeProfit, stop = shortStopLoss, when = validCloseShortPosition)
 
