@@ -165,6 +165,8 @@ class Vumanchu(Strategy):
         # Call on new candle
         self.on_new_candle()
 
+
+
     @property
     @cached
     def fast_ema(self):
@@ -261,6 +263,8 @@ class Vumanchu(Strategy):
     
 
     def should_long(self) -> bool:
+        # available_margin = capital * leverage
+
         qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
         if qty != 0 and self.vars["longTradesEnabled"] and self.signal == "buySignal":
             return True
@@ -276,6 +280,8 @@ class Vumanchu(Strategy):
     def go_long(self):
 
         qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
+        print("Capital: ", self.capital)
+        print("Available Margin: ", self.available_margin)
         self.qty = qty
 
         self.starting_balance = self.capital
@@ -300,6 +306,10 @@ class Vumanchu(Strategy):
     def go_short(self):
 
         qty = max(min(round(self.risk_qty_short(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
+        print("Capital: ", self.capital)
+        
+        print("Available: ", self.available_margin)
+
         self.qty = qty
         
         self.starting_balance = self.capital
@@ -317,7 +327,7 @@ class Vumanchu(Strategy):
             self.pine_cmt = 'L[' #cmt
             self.data_log.append([self.index, self.ts, self.open, self.close, self.high, self.low, self.current_candle[5], "Entry Short", '', self.starting_balance,
                 self.capital, self.capital - self.starting_balance , qty, self.short_sl, self.short_tp])
-
+    
     def view_orders(self,orders):
         for order in orders:
             print(f"Type {order.type} active {order.is_active} price ={order.price}")
@@ -330,6 +340,7 @@ class Vumanchu(Strategy):
     def on_close_position(self, order):
         # self.last_was_profitable = True
         # print(f"Close Position {self.price} {self.short_sl} {self.long_sl}")
+        cmt = ''
 
         if self.debug_log >= 1 and self.short_sl > 0:
             self.pine_short(self.pine_cmt + "]", self.pine_entryts, self.qty, self.current_candle[0], self.short_sl, self.short_tp)
@@ -371,7 +382,7 @@ class Vumanchu(Strategy):
             print(self.indicator_log)
             tu.write_csv(type(self).__name__ +'-' + self.symbol +'-' + self.timeframe, self.data_header, self.data_log)
             tu.write_csv(type(self).__name__ +'-' + self.symbol +'-' + self.timeframe + '-indicator', self.indicator_header, self.indicator_log)
-            tu.write_pine(type(self).__name__ +'-' + self.symbol +'-' + self.timeframe, self.pine_log)
+            tu.write_pine(type(self).__name__ +'-' + self.symbol +'-' + self.timeframe, self.metrics['starting_balance'], self.pine_log)
 
     def pine_long(self, comment, ts, qty, ts_out, sl, tp):
         self.pine_orderid += 1
