@@ -24,11 +24,11 @@ strategy(title = 'VuManChu B Scalp Script with Filters', shorttitle = 'VMC Ciphe
 
 // PARAMETERS {
 // Date Ranges
-from_month = input(defval = 08, title = "From Month", minval = 1, maxval = 12)
+from_month = input(defval = 09, title = "From Month", minval = 1, maxval = 12)
 from_day   = input(defval = 01, title = "From Day", minval = 1, maxval = 31)
 from_year  = input(defval = 2021, title = "From Year")
-to_month   = input(defval = 02, title = "To Month", minval = 1, maxval = 12)
-to_day     = input(defval = 28, title = "To Day", minval = 1, maxval = 31)
+to_month   = input(defval = 03, title = "To Month", minval = 1, maxval = 12)
+to_day     = input(defval = 31, title = "To Day", minval = 1, maxval = 31)
 to_year    = input(defval = 2022, title = "To Year")
 start  = timestamp(from_year, from_month, from_day, 00, 00)  // backtest start window
 finish = timestamp(to_year, to_month, to_day, 23, 59)        // backtest finish window
@@ -169,20 +169,6 @@ colormacdWT2c = #132213
 colormacdWT2d = #770000
 
 // } PARAMETERS
-
-// Get EMAs
-offset = input(title="Offset", defval=0, minval=-500, maxval=500)
-ema50 = ema(close,50)
-plot(ema50, title="EMA50", color=color.blue, offset=offset)
-ema200 = ema(close, 200)
-plot(ema200, title="EMA200", color=color.red, offset=offset)
-ema50pullback = close > ema50 - (ema50 * 0.05) and close < ema50 + (ema50 * 0.05)
-
-
-//EMA Filters
-emaLong = close > ema200 and ema50pullback
-emaShort = close < ema200 and ema50pullback
-
 
 // FUNCTIONS {
   
@@ -383,6 +369,19 @@ stochBullDivColor = (stochShowDiv and stochBullDiv) or (stochShowHiddenDiv and s
 // Small Circles WT Cross
 signalColor = wt2 - wt1 > 0 ? color.red : color.lime
 
+// Get EMAs
+offset = input(title="Offset", defval=0, minval=-500, maxval=500)
+ema50 = ema(close,50)
+plot(ema50, title="EMA50", color=color.blue, offset=offset)
+ema200 = ema(close, 200)
+plot(ema200, title="EMA200", color=color.red, offset=offset)
+ema50pullback = close > ema50 - (ema50 * 0.05) and close < ema50 + (ema50 * 0.05)
+
+
+//EMA Filters
+emaLong = close > ema200 and ema50pullback
+emaShort = close < ema200 and ema50pullback
+
 //LA WT BUY/SELL
 wtBuy = wt2 <=0 and wt1 <=0 and rsiMFI >0 and emaLong
 wtSell = wt2 >=0 and wt1 >=0 and rsiMFI <0 and emaShort
@@ -569,27 +568,23 @@ botShortRiskLoss = strategy.equity * botRisk/ (abs(openPrice - shortStopLoss)*10
 botOrderCoinLong  = truncate(strategy.equity * botLeverage < botLongRiskLoss? strategy.equity * botLeverage /openPrice: botLongRiskLoss / openPrice, botBasePrecision)
 botOrderCoinShort = truncate(strategy.equity * botLeverage < botShortRiskLoss? strategy.equity * botLeverage /openPrice: botShortRiskLoss / openPrice, botBasePrecision)
 
-// longRiskLoss = strategy.equity * botRisk / (openAtr * longAtrSLMultipier * 100 / openPrice)
-// shortRiskLoss = strategy.equity * botRisk / (openAtr * shortAtrSLMultipier * 100 / openPrice)
 
-// longUnitQty = max(0, min(strategy.equity, longRiskLoss))
-// shortUnitQty = max(0, min(strategy.equity, shortRiskLoss))
 
-// longRiskQty = botBudget * botRisk / (openAtr * longAtrSLMultipier * 100)
-// shortRiskQty = botBudget * botRisk / (openAtr * shortAtrSLMultipier * 100)
+riskQtyLong = (strategy.equity * botRisk) / (openAtr * longAtrSLMultipier * 100)
+riskQtyShort = (strategy.equity * botRisk) / (openAtr * shortAtrSLMultipier * 100)
 
-// longQty = max(min(round(longRiskQty, 2), (botBudget * 10 - 1) / openPrice), 0)
-// shortQty = max(min(round(shortRiskQty, 2), (botBudget * 10 - 1) / openPrice), 0)
+qtyLong = max(min(round(riskQtyLong, 2), (strategy.equity * botLeverage - 1) / openPrice ), 0)
+qtyShort = max(min(round(riskQtyShort, 2), (strategy.equity * botLeverage - 1) / openPrice), 0)
 
-enterLongPosition = validOpenLongPosition and buySignal
-enterShortPosition = validOpenShortPosition and sellSignal
+enterLongPosition = openLongPosition and buySignal and (qtyLong != 0)
+enterShortPosition = openShortPosition and sellSignal and (qtyShort != 0 )
 
         
-strategy.entry("Entry Long", strategy.long, qty = botOrderCoinLong, limit = longTakeProfit, stop = longStopLoss,  when = enterLongPosition)
+strategy.entry("Entry Long", true , qty = qtyLong, limit = longTakeProfit, stop = longStopLoss,  when = enterLongPosition)
     
-strategy.entry("Entry Short", strategy.short, qty = botOrderCoinShort, limit = longTakeProfit, stop = shortStopLoss,  when = enterLongPosition)
+strategy.entry("Entry Short", false, qty = qtyShort, limit = longTakeProfit, stop = shortStopLoss,  when = enterLongPosition)
 
-strategy.exit("Exit Long", "Entry Long", limit = longTakeProfit, stop = longStopLoss, when = validCloseLongPosition)
+strategy.exit(id = "Exit Long", from_entry = "Entry Long", limit = longTakeProfit, stop = longStopLoss, when = validCloseLongPosition)
 
-strategy.exit("Exit short", "Entry Short", limit = longTakeProfit, stop = shortStopLoss, when = validCloseShortPosition)
+strategy.exit(id = "Exit short", from_entry = "Entry Short", limit = longTakeProfit, stop = shortStopLoss, when = validCloseShortPosition)
 
