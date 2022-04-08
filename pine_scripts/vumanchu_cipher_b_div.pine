@@ -428,92 +428,6 @@ wtGoldBuy = ((wtShowDiv and wtBullDiv) or (rsiShowDiv and rsiBullDiv)) and
 // } CALCULATE INDICATORS
 
 
-// DRAW {
-bgcolor(darkMode ? color.new(#000000, 80) : na)
-zLine = plot(0, color = color.new(colorWhite, 50))
-
-//  MFI BAR
-rsiMfiBarTopLine = plot(rsiMFIShow ? -95 : na, title = 'MFI Bar TOP Line', transp = 100)
-rsiMfiBarBottomLine = plot(rsiMFIShow ? -99 : na, title = 'MFI Bar BOTTOM Line', transp = 100)
-fill(rsiMfiBarTopLine, rsiMfiBarBottomLine, title = 'MFI Bar Colors', color = rsiMFIColor, transp = 75)
-
-// WT Areas
-plot(wtShow ? wt1 : na, style = plot.style_area, title = 'WT Wave 1', color = macdWTColorsShow ? macdWT1Color : colorWT1, transp = 0)
-plot(wtShow ? wt2 : na, style = plot.style_area, title = 'WT Wave 2', color = macdWTColorsShow ? macdWT2Color : darkMode ? colorWT2_ : colorWT2 , transp = 20)
-
-// VWAP
-plot(vwapShow ? wtVwap : na, title = 'VWAP', color = colorYellow, style = plot.style_area, linewidth = 2, transp = 45)
-
-// MFI AREA
-rsiMFIplot = plot(rsiMFIShow ? rsiMFI: na, title = 'RSI+MFI Area', color = rsiMFIColor, transp = 20)
-fill(rsiMFIplot, zLine, rsiMFIColor, transp = 40)
-
-// WT Div
-
-plot(series = wtFractalTop ? wt2[2] : na, title = 'WT Bearish Divergence', color = wtBearDivColor, linewidth = 2, offset = -2)
-plot(series = wtFractalBot ? wt2[2] : na, title = 'WT Bullish Divergence', color = wtBullDivColor, linewidth = 2, offset = -2)
-
-// WT 2nd Div
-plot(series = wtFractalTop_add ? wt2[2] : na, title = 'WT 2nd Bearish Divergence', color = wtBearDivColor_add, linewidth = 2, offset = -2)
-plot(series = wtFractalBot_add ? wt2[2] : na, title = 'WT 2nd Bullish Divergence', color = wtBullDivColor_add, linewidth = 2, offset = -2)
-
-// RSI
-plot(rsiShow ? rsi : na, title = 'RSI', color = rsiColor, linewidth = 2, transp = 25)
-
-// RSI Div
-plot(series = rsiFractalTop ? rsi[2] : na, title='RSI Bearish Divergence', color = rsiBearDivColor, linewidth = 1, offset = -2)
-plot(series = rsiFractalBot ? rsi[2] : na, title='RSI Bullish Divergence', color = rsiBullDivColor, linewidth = 1, offset = -2)
-
-// Stochastic RSI
-stochKplot = plot(stochShow ? stochK : na, title = 'Stoch K', color = color.new(#21baf3, 0), linewidth = 2)
-stochDplot = plot(stochShow ? stochD : na, title = 'Stoch D', color = color.new(#673ab7, 60), linewidth = 1)
-stochFillColor = stochK >= stochD ? color.new(#21baf3, 75) : color.new(#673ab7, 60)
-fill(stochKplot, stochDplot, title='KD Fill', color=stochFillColor)
-
-// Stoch Div
-plot(series = stochFractalTop ? stochK[2] : na, title='Stoch Bearish Divergence', color = stochBearDivColor, linewidth = 1, offset = -2)
-plot(series = stochFractalBot ? stochK[2] : na, title='Stoch Bullish Divergence', color = stochBullDivColor, linewidth = 1, offset = -2)
-
-// Schaff Trend Cycle
-plot(tcLine ? tcVal : na, color = color.new(#673ab7, 25), linewidth = 2, title = "Schaff Trend Cycle 1")
-plot(tcLine ? tcVal : na, color = color.new(colorWhite, 50), linewidth = 1, title = "Schaff Trend Cycle 2")
-
-
-// Draw Overbought & Oversold lines
-//plot(obLevel, title = 'Over Bought Level 1', color = colorWhite, linewidth = 1, style = plot.style_circles, transp = 85)
-plot(obLevel2, title = 'Over Bought Level 2', color = colorWhite, linewidth = 1, style = plot.style_stepline, transp = 85)
-plot(obLevel3, title = 'Over Bought Level 3', color = colorWhite, linewidth = 1, style = plot.style_circles, transp = 95)
-
-//plot(osLevel, title = 'Over Sold Level 1', color = colorWhite, linewidth = 1, style = plot.style_circles, transp = 85)
-plot(osLevel2, title = 'Over Sold Level 2', color = colorWhite, linewidth = 1, style = plot.style_stepline, transp = 85)
-
-// Sommi flag
-plotchar(sommiFlagShow and sommiBearish ? 108 : na, title = 'Sommi bearish flag', char='⚑', color = colorPink, location = location.absolute, size = size.tiny, transp = 0)
-plotchar(sommiFlagShow and sommiBullish ? -108 : na, title = 'Sommi bullish flag', char='⚑', color = colorBluelight, location = location.absolute, size = size.tiny, transp = 0)
-plot(sommiShowVwap ? ema(hvwap, 3) : na, title = 'Sommi higher VWAP', color = colorYellow, linewidth = 2, style = plot.style_line, transp = 15)
-
-// Sommi diamond
-plotchar(sommiDiamondShow and sommiBearishDiamond ? 108 : na, title = 'Sommi bearish diamond', char='◆', color = colorPink, location = location.absolute, size = size.tiny, transp = 0)
-plotchar(sommiDiamondShow and sommiBullishDiamond ? -108 : na, title = 'Sommi bullish diamond', char='◆', color = colorBluelight, location = location.absolute, size = size.tiny, transp = 0)
-
-// Circles
-//plot(wtCross ? wt2 : na, title = 'Buy and sell circle', color = signalColor, style = plot.style_circles, linewidth = 3, transp = 15)
-plot(buySignal ? wt2 : na, title = 'Buy circle', color = signalColor, style = plot.style_circles, linewidth = 3, transp = 15)
-plot(sellSignal ? wt2 : na, title = 'sell circle', color = signalColor, style = plot.style_circles, linewidth = 3, transp = 15)
-
-//plotchar(wtBuyShow and buySignal ? -107 : na, title = 'Buy arrow', char='·', color = colorGreen, location = location.absolute, size = size.small, transp = 50)
-//plotchar(wtSellShow and sellSignal ? 105 : na , title = 'Sell arrow', char='·', color = colorRed, location = location.absolute, size = size.small, transp = 50)
-
-plotshape(buySignal ? -107 : na, title="Buy", text="Buy", style=shape.labelup, location=location.bottom, color=color.green, textcolor=color.white, size=size.tiny, transp=0)
-plotshape(sellSignal ? 105 : na, title="Sell", text="Sell",style=shape.labeldown, location=location.top, color=color.red, textcolor=color.white, size=size.tiny, transp=0)
-
-plotchar(wtDivShow and buySignalDiv ? -106 : na, title = 'Divergence buy circle', char='•', text='Buy', color = buySignalDiv_color, location = location.absolute, size = size.small, offset = -2, transp = 15)
-plotchar(wtDivShow and sellSignalDiv ? 106 : na, title = 'Divergence sell circle', char='•', color = sellSignalDiv_color, location = location.absolute, size = size.small, offset = -2, transp = 15)
-
-plotchar(wtGoldBuy and wtGoldShow ? -106 : na, title = 'Gold  buy gold circle', char='•', color = colorOrange, location = location.absolute, size = size.small, offset = -2, transp = 15)
-
-// } DRAW
-
 alertcondition(buySignal, 'Buy Signal', 'Buy, WaveTrend Oversold')
 alertcondition(sellSignal and wtSell, 'Sell Signal', 'Sell, WaveTrend Overbought')
 
@@ -523,8 +437,8 @@ shortTradesEnabled = input(defval = true, title = 'Short Trades', tooltip = 'Ena
 
 atrLength = input(defval = 14, title = 'ATR Length', minval = 1, tooltip = 'How many previous candles to use for the ATR calculation.', group = 'General')
 
-bool openLongPosition = longTradesEnabled  and window
-bool openShortPosition = shortTradesEnabled and window
+bool openLongPosition = longTradesEnabled  and window and buySignal 
+bool openShortPosition = shortTradesEnabled and window and sellSignal 
 bool closeLongPosition = longTradesEnabled and window
 bool closeShortPosition = shortTradesEnabled and window
 
@@ -576,15 +490,22 @@ riskQtyShort = (strategy.equity * botRisk) / (openAtr * shortAtrSLMultipier * 10
 qtyLong = max(min(round(riskQtyLong, 2), (strategy.equity * botLeverage - 1) / openPrice ), 0)
 qtyShort = max(min(round(riskQtyShort, 2), (strategy.equity * botLeverage - 1) / openPrice), 0)
 
-enterLongPosition = openLongPosition and buySignal and (qtyLong != 0)
-enterShortPosition = openShortPosition and sellSignal and (qtyShort != 0 )
+enterLongPosition = openLongPosition and (qtyLong != 0)
+enterShortPosition = openShortPosition  and (qtyShort != 0 )
 
         
-strategy.entry("Entry Long", true , qty = qtyLong, limit = longTakeProfit, stop = longStopLoss,  when = enterLongPosition)
+strategy.entry("Entry Long", true , qty = qtyLong, when = enterLongPosition)
     
-strategy.entry("Entry Short", false, qty = qtyShort, limit = longTakeProfit, stop = shortStopLoss,  when = enterLongPosition)
+strategy.entry("Entry Short", false, qty = qtyShort, when = enterShortPosition)
 
 strategy.exit(id = "Exit Long", from_entry = "Entry Long", limit = longTakeProfit, stop = longStopLoss, when = validCloseLongPosition)
 
-strategy.exit(id = "Exit short", from_entry = "Entry Short", limit = longTakeProfit, stop = shortStopLoss, when = validCloseShortPosition)
+strategy.exit(id = "Exit short", from_entry = "Entry Short", limit = shortTakeProfit, stop = shortStopLoss, when = validCloseShortPosition)
 
+var stopLossColor = color.new(#e25141, 0)
+var takeProfitColor = color.new(#206060, 0)
+plot(series = validCloseLongPosition ? longStopLoss : na, title = 'Long Trail Stop', color = stopLossColor, linewidth = 1, style = plot.style_linebr, offset = 1)
+plot(series = validCloseShortPosition ? shortStopLoss : na, title = 'Short Trail Stop', color = stopLossColor, linewidth = 1, style = plot.style_linebr, offset = 1)
+
+plot(series = validCloseLongPosition ? longTakeProfit : na, title = 'Long Take Profit', color = takeProfitColor, linewidth = 1, style = plot.style_linebr, offset = 1)
+plot(series = validCloseShortPosition ? shortTakeProfit : na, title = 'Short Take Profit', color = takeProfitColor, linewidth = 1, style = plot.style_linebr, offset = 1)
