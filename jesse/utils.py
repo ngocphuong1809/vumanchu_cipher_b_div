@@ -17,28 +17,7 @@ from jesse.config import config
 #
 from jesse.services.candle import generate_candle_from_one_minutes, print_candle, candle_includes_price, split_candle
 from jesse.libs import DynamicNumpyArray
-#_store
-# from jesse.enums import timeframes
 
-def normal_trailing_tp1(str):
-    if str.is_long:
-        str.stop_loss   = abs(str.position.qty), str.price - str.atr * str.lvars["atr_sl_multiplier"]
-        if str.vars["trailing_stoploss"]:
-            str.take_profit = [
-                (abs(str.position.qty) / 2, str.price + str.atr* str.lvars["atr_tp_multiplier"] / 2),
-                (abs(str.position.qty) / 2, str.price + str.atr* str.lvars["atr_tp_multiplier"])
-            ]
-        else:
-            str.take_profit = abs(str.position.qty), str.price + str.atr * str.lvars["atr_tp_multiplier"]    
-    if str.is_short:
-        str.stop_loss   = abs(str.position.qty), str.price + str.atr * str.svars["atr_sl_multiplier"]
-        if str.vars["trailing_stoploss"]:
-            str.take_profit = [
-                (abs(str.position.qty) / 2, str.price - str.atr* str.svars["atr_tp_multiplier"] / 2),
-                (abs(str.position.qty) / 2, str.price - str.atr* str.svars["atr_tp_multiplier"])
-            ]
-        else:
-            str.take_profit = abs(str.position.qty), str.price - str.atr * str.svars["atr_tp_multiplier"]   
 
 def timestamp_to_gmt7(timestamp):
     return datetime.datetime.utcfromtimestamp(timestamp + 7 *3600).strftime('%Y-%m-%d %H:%M')
@@ -88,29 +67,6 @@ def ctf_forming_estimation(self, exchange: str, symbol: str, timeframe: str) -> 
     if current_1m_count % 1440  == 0:
         dif = 0
     return dif, long_key, short_key
-    
-# # Generate candles from one minute data
-# def generate_realtime_ctf_candle(self, exchange: str, symbol: str) -> np.ndarray:
-#     # generate and add candles for bigger timeframes
-#     for timeframe in config['app']['ctf_timeframes']:
-#         dif, long_key, short_key = ctf_forming_estimation(exchange, symbol, timeframe)
-#         long_count = len(store.candles.get_storage(exchange, symbol, timeframe))
-#         short_count = len(store.candles.get_storage(exchange, symbol, '1m'))
-
-#         # complete candle
-#         # CTF Hack: Reset Candle at of
-#         # i_timeframe = jh.timeframe_to_one_minutes(timeframe)
-#         if (short_count % 1440 == 0 and short_count > 0) and dif != 0:
-#         # if dif != 0:
-#             return generate_candle_from_one_minutes(
-#                 timeframe, store.candles.storage[short_key][short_count - dif:short_count],
-#                 True
-#             )
-#         if long_count == 0:
-#             return np.zeros((0, 6))
-#         else:
-#             return store.candles.storage[long_key][-1]  
-
 
 
 def minutes_from_reset_time():
