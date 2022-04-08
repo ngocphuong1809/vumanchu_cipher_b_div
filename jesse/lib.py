@@ -1,5 +1,9 @@
 import numpy as np
 
+def truncate(number, decimals):
+    factor = pow(10, decimals)
+    return int(number * factor) / factor
+
 
 def line2arr(line, size=-1):
     '''
