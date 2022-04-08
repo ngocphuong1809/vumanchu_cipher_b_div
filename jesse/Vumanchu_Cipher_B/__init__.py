@@ -56,21 +56,11 @@ class Vumanchu(Strategy):
         self.vars["rsiMFIPosY"]                     = 2.5           #MFI Area Y Pos
 
         self.vars["atr_valu"]                       = 14            #ATR (Period)
-        # self.vars["rsiOversold"]                    = 30            #RSI OverSold
-        # self.vars["rsiOverbought"]                  = 60            #RSI OverBought
 
         self.vars["longTradesEnabled"]              = True          # Long Trades (Filter)
         self.vars["shortTradesEnabled"]             = True          # Short Trades (Filter)
-        # self.vars["enableEntryTrailing"]            = False         # Enable/ Disable the trailing for entry position
-       
-        # self.vars["devEntryAtrMult"]                = 0.5           # Deviation ATR Mul  Multiplier to be used on the initial entrys` ATR to calculate the step for following the price, when the entry target is reached
-        # self.vars["enterLongPosition"]              = False
-        # self.vars["enterShortPosition"]             = False
 
         self.vars["botRisk"]                        = 3.0           #Bot risk % each entry
-        # self.vars["botLeverage"]                    = 10.0          # Bot Leverage
-        # self.vars["botPricepPrecision"]             = 4             #Bot Order Price Precision
-        # self.vars["botBasePrecision"]               = 1             #Bot Order Coin Precision
  
         self.svars["slMult"]                        = 1.6
         self.svars["tpMult"]                        = 2.9
@@ -82,18 +72,13 @@ class Vumanchu(Strategy):
         self.lvars["fast_ema"]                      = 50
         self.lvars["slow_ema"]                      = 200
 
-
-
     def hyperparameters(self):
         return [ 
             {'name': 'fast_ema', 'title': 'Fast EMA (EMA 50)', 'type': int, 'min': 30, 'max': 100, 'default': 50},
             {'name': 'slow_ema', 'title': 'Slow EMA (EMA 200)', 'type': int, 'min': 150, 'max': 400, 'default': 200},
 
             {'name': 'slMult', 'title': 'Long Stop Loss Mult', 'type': float, 'min': 1.0, 'max': 3.0, 'default': 1.6},
-            {'name': 'tpMult', 'title': 'Long Take Profit Mult', 'type': float, 'min': 2.0, 'max': 6.0, 'default': 2.9},
-
-            # {'name': 'short_slMult', 'title': 'Short Stop Loss Mult', 'type': float, 'min': 1.0, 'max': 3.0, 'default': 1.6},
-            # {'name': 'short_tpMult', 'title': 'Short Take Profit Mult', 'type': float, 'min': 2.0, 'max': 6.0, 'default': 2.9},     
+            {'name': 'tpMult', 'title': 'Long Take Profit Mult', 'type': float, 'min': 2.0, 'max': 6.0, 'default': 2.9},    
         ]
 
     def on_first_candle(self):
@@ -106,7 +91,6 @@ class Vumanchu(Strategy):
             self.qty_precision = 2
 
         # Load params from file if not loaded
-        # self.price_precision = self._price_precision()
         file_name = "params/" + type(self).__name__ + '_' + self.symbol + '_' + self.timeframe +'.json'
         vars = {}
         file_exists = jh.file_exists(file_name)
@@ -133,11 +117,6 @@ class Vumanchu(Strategy):
             vars['short_vars']  = self.svars
             tu.save_params(file_name, vars)
 
-            # print("Write params to file: " + file_name)
-            # print("Common Vars: ", vars['common_vars'])
-            # print("Long Vars: ", vars['long_vars'])
-            # print("Short Vars: ", vars['short_vars'])
-
         if jh.is_optimizing():
             self.svars["fast_ema"]                  = self.hp["fast_ema"]
             self.svars["slow_ema"]                  = self.hp["slow_ema"]
@@ -149,8 +128,6 @@ class Vumanchu(Strategy):
             self.lvars["slMult"]                    = self.hp["slMult"]
             self.lvars["tpMult"]                    = self.hp["tpMult"]
         
-          
-
     def on_new_candle(self):
         if self.debug_log > 0:  
             self.ts = tu.timestamp_to_gmt7(self.current_candle[0] / 1000)
@@ -164,8 +141,6 @@ class Vumanchu(Strategy):
 
         # Call on new candle
         self.on_new_candle()
-
-
 
     @property
     @cached
@@ -204,14 +179,6 @@ class Vumanchu(Strategy):
         rmfi = rf - self.vars["rsiMFIPosY"] 
         return rmfi
 
-    def unit_qty_long(self):
-        risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.lvars["slMult"] * 100 / self.price) 
-        return max(0, min(self.capital, risk_loss))
-
-    def unit_qty_short(self):
-        risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.svars["slMult"]  * 100  / self.price) 
-        return max(0, min(self.capital, risk_loss))
-
     def risk_qty_long(self):
         risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.lvars["slMult"] * 100) 
         return risk_loss
@@ -228,7 +195,6 @@ class Vumanchu(Strategy):
     
         [wt1, wt2, wtCross, wtCrossUp, wtCrossDown, wtOversold, wtOverbought] = wt(self.candles, self.vars["wtChannelLen"], self.vars["wtAverageLen"], self.vars["wtMALen"], self.vars["obLevel"], self.vars["osLevel"], self.vars["wtMASource"])
         
-        
         # //LA WT BUY/SELL
         # wtBuy = wt2 <=0 and wt1 <=0 and rsiMFI >0 and emaLong
         # wtSell = wt2 >=0 and wt1 >=0 and rsiMFI <0 and emaShort
@@ -238,21 +204,11 @@ class Vumanchu(Strategy):
             signal = "buySignal"
             cmt = 'LongCond'
 
-        
-    
         # sellSignal = wtCross and wtCrossDown and wtOverbought and wtSell
         if wtCross and wtCrossDown and wtOverbought and wt2[-1] >= 0 and wt1[-1] >= 0 and self.rsiMFI < 0 and self.emaShort:
             signal = "sellSignal"
             cmt = 'ShortCond'
 
-
-        # Debuging
-        # if (self.debug_log == 2 and signal == "sellSignal") or self.debug_log > 2:
-        #     cmt = 'ShortCond'
-        
-        # self.data_log.append([self.index, self.ts, self.open, self.high, self.low, self.close, self.current_candle[5], \
-        #         cmt, wt1, wt2, wtCross, wtCrossUp, wtCrossDown, wtOversold, wtOverbought, self.rsiMFI])
-        
         if self.debug_log >= 1 and (cmt == 'LongCond' or cmt == 'ShortCond'):
             if self.pre_index != self.index:
                 self.indicator_log.append([self.index, self.ts, cmt, wt1[-1], wt2[-1], self.rsiMFI])
@@ -260,11 +216,7 @@ class Vumanchu(Strategy):
 
         return signal
 
-    
-
     def should_long(self) -> bool:
-        # available_margin = capital * leverage
-
         qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
         if qty != 0 and self.vars["longTradesEnabled"] and self.signal == "buySignal":
             return True
@@ -300,9 +252,6 @@ class Vumanchu(Strategy):
             self.data_log.append([self.index, self.ts, self.open, self.close, self.high, self.low, self.current_candle[5], "Entry Long", '',
                 self.starting_balance, self.capital, self.capital - self.starting_balance , qty, self.long_sl, self.long_tp])
         
-
-        
-
     def go_short(self):
 
         qty = max(min(round(self.risk_qty_short(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
@@ -327,7 +276,7 @@ class Vumanchu(Strategy):
             self.pine_cmt = 'L[' #cmt
             self.data_log.append([self.index, self.ts, self.open, self.close, self.high, self.low, self.current_candle[5], "Entry Short", '', self.starting_balance,
                 self.capital, self.capital - self.starting_balance , qty, self.short_sl, self.short_tp])
-    
+
     def view_orders(self,orders):
         for order in orders:
             print(f"Type {order.type} active {order.is_active} price ={order.price}")
@@ -338,8 +287,6 @@ class Vumanchu(Strategy):
                 order.cancel()
  
     def on_close_position(self, order):
-        # self.last_was_profitable = True
-        # print(f"Close Position {self.price} {self.short_sl} {self.long_sl}")
         cmt = ''
 
         if self.debug_log >= 1 and self.short_sl > 0:
@@ -369,9 +316,6 @@ class Vumanchu(Strategy):
 
         self.initial_entry = 0  
     
-    # def on_cancel(self):
-        # self.pyramiding_levels = 0 
-
     def watch_list(self):
         return [
             
@@ -387,28 +331,15 @@ class Vumanchu(Strategy):
     def pine_long(self, comment, ts, qty, ts_out, sl, tp):
         self.pine_orderid += 1
         ts = int(ts) + jh.timeframe_to_one_minutes(self.timeframe) * 60 * 1000
-        # if self.pine_reduced_ts > 0:
-        #     self.pine_orderid += 1
-        #     self.pine_log += f'strategy.entry("{self.pine_orderid - 1}", strategy.long, {qty}, {tp:.2f}, when = time_close == {ts:.0f}, comment="{comment}")\n'
-        #     self.pine_log += f'strategy.entry("{self.pine_orderid}", strategy.long, {qty}, {tp:.2f}, when = time_close == {ts:.0f}, comment="{comment}")\n'
-        #     self.pine_log += f'strategy.exit("{self.pine_orderid - 1}","{self.pine_orderid - 1}", limit = {self.pine_reduced_price:.2f}, when = time_close >= {self.pine_reduced_ts:.0f})\n'
-        #     self.pine_log += f'strategy.exit("{self.pine_orderid}","{self.pine_orderid}", stop = {sl:.2f}, limit = {tp:.2f}, when = time_close >= {ts_out:.0f})\n'
-        # else:
+        
         self.pine_log += f'strategy.entry("{self.pine_orderid}", strategy.long, {qty}, {tp:.2f}, when = time_close == {ts:.0f}, comment="{comment}")\n'
         self.pine_log += f'strategy.exit("{self.pine_orderid}","{self.pine_orderid}", stop = {sl:.2f}, limit = {tp:.2f}, when = time_close >= {ts_out:.0f})\n'
 
     def pine_short(self, comment, ts, qty, ts_out, sl, tp):
         self.pine_orderid += 1
         ts = int(ts) + jh.timeframe_to_one_minutes(self.timeframe) * 60 * 1000
-        # if self.pine_reduced_ts > 0:
-        #     self.pine_orderid += 1
-        #     self.pine_log += f'strategy.entry("{self.pine_orderid - 1}", strategy.short, {qty/2}, {tp:.2f}, when = time_close == {ts:.0f}, comment="{comment}")\n'
-        #     self.pine_log += f'strategy.entry("{self.pine_orderid}", strategy.short, {qty/2}, {tp:.2f}, when = time_close == {ts:.0f}, comment="{comment}")\n'
-        #     self.pine_log += f'strategy.exit("{self.pine_orderid - 1}","{self.pine_orderid - 1}", limit = {self.pine_reduced_price:.2f}, when = time_close >= {self.pine_reduced_ts:.0f})\n'
-        #     self.pine_log += f'strategy.exit("{self.pine_orderid}","{self.pine_orderid}", stop = {sl:.2f}, limit = {tp:.2f}, when = time_close >= {ts_out:.0f})\n'
-        # else:
+        
         self.pine_log += f'strategy.entry("{self.pine_orderid}", strategy.short, {qty}, {tp:.2f}, when = time_close == {ts:.0f}, comment="{comment}")\n'
         self.pine_log += f'strategy.exit("{self.pine_orderid}","{self.pine_orderid}", stop = {sl:.2f}, limit = {tp:.2f}, when = time_close >= {ts_out:.0f})\n'
 
-    
 
