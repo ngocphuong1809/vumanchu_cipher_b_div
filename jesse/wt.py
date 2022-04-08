@@ -7,28 +7,6 @@ from jesse.helpers import get_candle_source, slice_candles
 
 Wavetrend = namedtuple('Wavetrend', ['wt1', 'wt2', 'wtCross', 'wtCrossUp', 'wtCrossDown', 'wtOversold', 'wtOverbought'])
 
-# Wavetrend indicator ported from:  https://www.tradingview.com/script/Msm4SjwI-VuManChu-Cipher-B-Divergences/
-#                                   https://www.tradingview.com/script/2KE8wTuF-Indicator-WaveTrend-Oscillator-WT/
-
-
-# f_wavetrend(src, chlen, avg, malen, tf) =>
-#     tfsrc = security(syminfo.tickerid, tf, src)
-#     esa = ema(tfsrc, chlen)
-#     de = ema(abs(tfsrc - esa), chlen)
-#     ci = (tfsrc - esa) / (0.015 * de)
-#     wt1 = security(syminfo.tickerid, tf, ema(ci, avg))
-#     wt2 = security(syminfo.tickerid, tf, sma(wt1, malen))
-#     wtVwap = wt1 - wt2
-#     wtOversold = wt2 <= osLevel
-#     wtOverbought = wt2 >= obLevel
-#     wtCross = cross(wt1, wt2)
-#     wtCrossUp = wt2 - wt1 <= 0
-#     wtCrossDown = wt2 - wt1 >= 0
-#     wtCrosslast = cross(wt1[2], wt2[2])
-#     wtCrossUplast = wt2[2] - wt1[2] <= 0
-#     wtCrossDownlast = wt2[2] - wt1[2] >= 0
-#     [wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCrosslast, wtCrossUplast, wtCrossDownlast, wtVwap]
-
 def wt(candles: np.ndarray,
        wtchannellen: int = 9,
        wtaveragelen: int = 12,
@@ -89,7 +67,5 @@ def wt(candles: np.ndarray,
 #     wtCrossDown = wt2 - wt1 >= 0
     wtCrossDown = wt2[-1] - wt1[-1] >= 0
 
-    # if sequential:
     return Wavetrend(wt1, wt2, wtCross, wtCrossUp, wtCrossDown, wtOversold, wtOverbought)
-    # else:
-        # return Wavetrend(wt1[-1], wt2[-1], wtCross[-1], wtCrossUp[-1], wtCrossDown[-1], wtOversold[-1], wtOverbought[-1], wtVwap[-1])
+   
