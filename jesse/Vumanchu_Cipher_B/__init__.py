@@ -1,4 +1,6 @@
 
+from selectors import EpollSelector
+import string
 from jesse.strategies import Strategy, cached
 import jesse.indicators as ta
 from jesse import utils
@@ -44,6 +46,10 @@ class Vumanchu(Strategy):
         self.initial_entry                          = 0
         self.starting_capital                       = 0
 
+        self.onlyLong                               = False          #True: Only Long Position
+        self.onlyShort                              = False         #True: Only Short Position
+        self.LS                                     = True         #True: Long and Short Position
+
         self.vars["wtChannelLen"]                   = 9             #WT Channel Length
         self.vars["wtAverageLen"]                   = 12            #WT Average Length
         self.vars["wtMASource"]                     = "hlc3"        #WT MA Source  
@@ -66,11 +72,25 @@ class Vumanchu(Strategy):
         self.svars["tpMult"]                        = 2.9
         self.svars["fast_ema"]                      = 50
         self.svars["slow_ema"]                      = 200
+        self.svars["wtChannelLen"]                  = 9
+        self.svars["wtAverageLen"]                  = 12
+        self.svars["wtMASource"]                    = 3
+        self.svars["wtMALen"]                       = 3
+        self.svars["obLevel"]                       = 53
+        self.svars["osLevel"]                       = -53
 
         self.lvars["slMult"]                        = 1.6
         self.lvars["tpMult"]                        = 2.9
         self.lvars["fast_ema"]                      = 50
         self.lvars["slow_ema"]                      = 200
+        self.lvars["wtChannelLen"]                  = 9
+        self.lvars["wtAverageLen"]                  = 12
+        self.lvars["wtMASource"]                    = 3
+        self.lvars["wtMALen"]                       = 3
+        self.lvars["obLevel"]                       = 53
+        self.lvars["osLevel"]                       = -53
+        
+
 
     def hyperparameters(self):
         return [ 
@@ -79,7 +99,15 @@ class Vumanchu(Strategy):
 
             {'name': 'slMult', 'title': 'Long Stop Loss Mult', 'type': float, 'min': 1.0, 'max': 3.0, 'default': 1.6},
             {'name': 'tpMult', 'title': 'Long Take Profit Mult', 'type': float, 'min': 2.0, 'max': 6.0, 'default': 2.9},    
+    
+            {'name': 'wtChannelLen', 'title': 'WT Channel Length', 'type': int, 'min': 7, 'max': 11, 'default': 9},
+            {'name': 'wtAverageLen', 'title': 'WT Average Length', 'type': int, 'min': 10, 'max': 14, 'default': 12},
+            {'name': 'wtMASource', 'title': 'WT MA Source', 'type': int, 'min': 2, 'max': 4, 'default': 3},
+            {'name': 'wtMALen', 'title': 'WT MA Length', 'type': int, 'min': 2, 'max': 4, 'default': 3},
+            {'name': 'obLevel', 'title': 'WT Overbought Level 1', 'type': int, 'min': 50, 'max': 56, 'default': 53},
+            {'name': 'osLevel', 'title': 'WT Oversold Level 1', 'type': int, 'min': -56, 'max': -50, 'default': -53}
         ]
+
 
     def on_first_candle(self):
         # print("On First Candle")
@@ -122,11 +150,24 @@ class Vumanchu(Strategy):
             self.svars["slow_ema"]                  = self.hp["slow_ema"]
             self.svars["slMult"]                    = self.hp["slMult"]
             self.svars["tpMult"]                    = self.hp["tpMult"]
+            self.svars["wtChannelLen"]              = self.hp["wtChannelLen"]
+            self.svars["wtAverageLen"]              = self.hp["wtAverageLen"]
+            self.svars["wtMASource"]                = self.hp["wtMASource"]
+            self.svars["wtMALen"]                   = self.hp["wtMALen"]
+            self.svars["obLevel"]                   = self.hp["obLevel"]
+            self.svars["osLevel"]                   = self.hp["osLevel"]
 
             self.lvars["fast_ema"]                  = self.hp["fast_ema"]
             self.lvars["slow_ema"]                  = self.hp["slow_ema"]
             self.lvars["slMult"]                    = self.hp["slMult"]
             self.lvars["tpMult"]                    = self.hp["tpMult"]
+            self.lvars["wtChannelLen"]              = self.hp["wtChannelLen"]
+            self.lvars["wtAverageLen"]              = self.hp["wtAverageLen"]
+            self.lvars["wtMASource"]                = self.hp["wtMASource"]
+            self.lvars["wtMALen"]                   = self.hp["wtMALen"]
+            self.lvars["obLevel"]                   = self.hp["obLevel"]
+            self.lvars["osLevel"]                   = self.hp["osLevel"]
+
         
     def on_new_candle(self):
         if self.debug_log > 0:  
@@ -192,8 +233,13 @@ class Vumanchu(Strategy):
         signal = None
         # // Calculates WaveTrend
         cmt = ''
-    
-        [wt1, wt2, wtCross, wtCrossUp, wtCrossDown, wtOversold, wtOverbought] = wt(self.candles, self.vars["wtChannelLen"], self.vars["wtAverageLen"], self.vars["wtMALen"], self.vars["obLevel"], self.vars["osLevel"], self.vars["wtMASource"])
+        if self.hp["wtMASource"] == 2:
+            self.hp["wtMASource"] = 'hl2'
+        elif self.hp["wtMASource"] == 3:
+            self.hp["wtMASource"] = 'hlc3'
+        elif self.hp["wtMASource"] == 4:
+            self.hp["wtMASource"] = 'ohlc4'
+        [wt1, wt2, wtCross, wtCrossUp, wtCrossDown, wtOversold, wtOverbought] = wt(self.candles, self.hp["wtChannelLen"], self.hp["wtAverageLen"], self.hp["wtMALen"], self.hp["obLevel"], self.hp["osLevel"], self.hp["wtMASource"])
         
         # //LA WT BUY/SELL
         # wtBuy = wt2 <=0 and wt1 <=0 and rsiMFI >0 and emaLong
@@ -217,14 +263,20 @@ class Vumanchu(Strategy):
         return signal
 
     def should_long(self) -> bool:
-        qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
-        if qty != 0 and self.vars["longTradesEnabled"] and self.signal == "buySignal":
-            return True
+        if self.onlyLong or self.LS:
+            qty = max(min(round(self.risk_qty_long(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
+            if qty != 0 and self.vars["longTradesEnabled"] and self.signal == "buySignal":
+                return True
+        else:
+            return False
 
     def should_short(self) -> bool:
-        qty = max(min(round(self.risk_qty_short(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
-        if qty != 0 and self.vars["shortTradesEnabled"] and self.signal == "sellSignal":
-            return True
+        if self.onlyShort or self.LS:
+            qty = max(min(round(self.risk_qty_short(), self.qty_precision), (self.available_margin - 1)/ self.price), 0)
+            if qty != 0 and self.vars["shortTradesEnabled"] and self.signal == "sellSignal":
+                return True
+        else:
+            return False
 
     def should_cancel(self) -> bool:
         return True
