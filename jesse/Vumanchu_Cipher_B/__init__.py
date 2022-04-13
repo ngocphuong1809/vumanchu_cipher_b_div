@@ -98,23 +98,23 @@ class Vumanchu(Strategy):
             {'name': 'long_slow_ema', 'title': 'Slow EMA (EMA 200)', 'type': int, 'min': 150, 'max': 400, 'default': 200},
             {'name': 'long_slMult', 'title': 'Long Stop Loss Mult', 'type': float, 'min': 1.0, 'max': 3.0, 'default': 1.6},
             {'name': 'long_tpMult', 'title': 'Long Take Profit Mult', 'type': float, 'min': 2.0, 'max': 6.0, 'default': 2.9},    
-            {'name': 'long_wtChannelLen', 'title': 'WT Channel Length', 'type': int, 'min': 7, 'max': 11, 'default': 9},
-            {'name': 'long_wtAverageLen', 'title': 'WT Average Length', 'type': int, 'min': 10, 'max': 14, 'default': 12},
+            {'name': 'long_wtChannelLen', 'title': 'WT Channel Length', 'type': int, 'min': 9, 'max': 15, 'default': 9},
+            {'name': 'long_wtAverageLen', 'title': 'WT Average Length', 'type': int, 'min': 12, 'max': 20, 'default': 12},
             {'name': 'long_wtMASource', 'title': 'WT MA Source', 'type': int, 'min': 2, 'max': 4, 'default': 3},
             {'name': 'long_wtMALen', 'title': 'WT MA Length', 'type': int, 'min': 2, 'max': 4, 'default': 3},
-            {'name': 'long_obLevel', 'title': 'WT Overbought Level 1', 'type': int, 'min': 50, 'max': 56, 'default': 53},
-            {'name': 'long_osLevel', 'title': 'WT Oversold Level 1', 'type': int, 'min': -56, 'max': -50, 'default': -53},
+            {'name': 'long_obLevel', 'title': 'WT Overbought Level 1', 'type': int, 'min': 50, 'max': 60, 'default': 53},
+            {'name': 'long_osLevel', 'title': 'WT Oversold Level 1', 'type': int, 'min': -60, 'max': -40, 'default': -53},
 
             {'name': 'short_fast_ema', 'title': 'Fast EMA (EMA 50)', 'type': int, 'min': 30, 'max': 100, 'default': 50},
             {'name': 'short_slow_ema', 'title': 'Slow EMA (EMA 200)', 'type': int, 'min': 150, 'max': 400, 'default': 200},
             {'name': 'short_slMult', 'title': 'Long Stop Loss Mult', 'type': float, 'min': 1.0, 'max': 3.0, 'default': 1.6},
             {'name': 'short_tpMult', 'title': 'Long Take Profit Mult', 'type': float, 'min': 2.0, 'max': 6.0, 'default': 2.9},    
-            {'name': 'short_wtChannelLen', 'title': 'WT Channel Length', 'type': int, 'min': 7, 'max': 11, 'default': 9},
-            {'name': 'short_wtAverageLen', 'title': 'WT Average Length', 'type': int, 'min': 10, 'max': 14, 'default': 12},
+            {'name': 'short_wtChannelLen', 'title': 'WT Channel Length', 'type': int, 'min': 9, 'max': 15, 'default': 9},
+            {'name': 'short_wtAverageLen', 'title': 'WT Average Length', 'type': int, 'min': 12, 'max': 20, 'default': 12},
             {'name': 'short_wtMASource', 'title': 'WT MA Source', 'type': int, 'min': 2, 'max': 4, 'default': 3},
             {'name': 'short_wtMALen', 'title': 'WT MA Length', 'type': int, 'min': 2, 'max': 4, 'default': 3},
-            {'name': 'short_obLevel', 'title': 'WT Overbought Level 1', 'type': int, 'min': 50, 'max': 56, 'default': 53},
-            {'name': 'short_osLevel', 'title': 'WT Oversold Level 1', 'type': int, 'min': -56, 'max': -50, 'default': -53}
+            {'name': 'short_obLevel', 'title': 'WT Overbought Level 1', 'type': int, 'min': 50, 'max': 60, 'default': 53},
+            {'name': 'short_osLevel', 'title': 'WT Oversold Level 1', 'type': int, 'min': -60, 'max': -40, 'default': -53}
         ]
 
 
@@ -196,12 +196,12 @@ class Vumanchu(Strategy):
     @property
     @cached
     def long_fast_ema(self):
-        return ta.ema(self.candles, self.hp["long_fast_ema"])
+        return ta.ema(self.candles, self.lvars["fast_ema"])
 
     @property
     @cached
     def long_slow_ema(self):
-        return ta.ema(self.candles, self.hp["long_slow_ema"])
+        return ta.ema(self.candles, self.lvars["slow_ema"])
 
     @property
     @cached
@@ -216,12 +216,12 @@ class Vumanchu(Strategy):
     @property
     @cached
     def short_fast_ema(self):
-        return ta.ema(self.candles, self.hp["short_fast_ema"])
+        return ta.ema(self.candles, self.svars["fast_ema"])
 
     @property
     @cached
     def short_slow_ema(self):
-        return ta.ema(self.candles, self.hp["short_slow_ema"])
+        return ta.ema(self.candles, self.svars["slow_ema"])
 
     @property
     @cached
@@ -246,11 +246,11 @@ class Vumanchu(Strategy):
         return rmfi
 
     def risk_qty_long(self):
-        risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.hp["long_slMult"] * 100) 
+        risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.lvars["slMult"] * 100) 
         return risk_loss
 
     def risk_qty_short(self):
-        risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.hp["short_slMult"] * 100) 
+        risk_loss = self.capital * self.vars["botRisk"]  / (self.atr * self.svars["slMult"] * 100) 
         return risk_loss
 
     @property
@@ -258,21 +258,21 @@ class Vumanchu(Strategy):
         signal = None
         # // Calculates WaveTrend
         cmt = ''
-        if self.hp["long_wtMASource"] == 2:
-            self.hp["long_wtMASource"] = 'hl2'
-        elif self.hp["long_wtMASource"] == 3:
-            self.hp["long_wtMASource"] = 'hlc3'
-        elif self.hp["long_wtMASource"] == 4:
-            self.hp["long_wtMASource"] = 'ohlc4'
-        [long_wt1, long_wt2, long_wtCross, long_wtCrossUp, long_wtCrossDown, long_wtOversold, long_wtOverbought] = wt(self.candles, self.hp["long_wtChannelLen"], self.hp["long_wtAverageLen"], self.hp["long_wtMALen"], self.hp["long_obLevel"], self.hp["long_osLevel"], self.hp["long_wtMASource"])
+        if self.lvars["wtMASource"] == 2:
+            self.lvars["wtMASource"] = 'hl2'
+        elif self.lvars["wtMASource"] == 3:
+            self.lvars["wtMASource"] = 'hlc3'
+        elif self.lvars["wtMASource"] == 4:
+            self.lvars["wtMASource"] = 'ohlc4'
+        [long_wt1, long_wt2, long_wtCross, long_wtCrossUp, long_wtCrossDown, long_wtOversold, long_wtOverbought] = wt(self.candles, self.lvars["wtChannelLen"], self.lvars["wtAverageLen"], self.lvars["wtMALen"], self.lvars["obLevel"], self.lvars["osLevel"], self.lvars["wtMASource"])
         
-        if self.hp["short_wtMASource"] == 2:
-            self.hp["short_wtMASource"] = 'hl2'
-        elif self.hp["short_wtMASource"] == 3:
-            self.hp["short_wtMASource"] = 'hlc3'
-        elif self.hp["short_wtMASource"] == 4:
-            self.hp["short_wtMASource"] = 'ohlc4'
-        [short_wt1, short_wt2, short_wtCross, short_wtCrossUp, short_wtCrossDown, short_wtOversold, short_wtOverbought] = wt(self.candles, self.hp["short_wtChannelLen"], self.hp["short_wtAverageLen"], self.hp["short_wtMALen"], self.hp["short_obLevel"], self.hp["short_osLevel"], self.hp["short_wtMASource"])
+        if self.svars["wtMASource"] == 2:
+            self.svars["wtMASource"] = 'hl2'
+        elif self.svars["wtMASource"] == 3:
+            self.svars["wtMASource"] = 'hlc3'
+        elif self.svars["wtMASource"] == 4:
+            self.svars["wtMASource"] = 'ohlc4'
+        [short_wt1, short_wt2, short_wtCross, short_wtCrossUp, short_wtCrossDown, short_wtOversold, short_wtOverbought] = wt(self.candles, self.svars["wtChannelLen"], self.svars["wtAverageLen"], self.svars["wtMALen"], self.svars["obLevel"], self.svars["osLevel"], self.svars["wtMASource"])
         
         # //LA WT BUY/SELL
         # wtBuy = wt2 <=0 and wt1 <=0 and rsiMFI >0 and emaLong
@@ -327,8 +327,8 @@ class Vumanchu(Strategy):
         
         self.buy = qty, self.price
         self.initial_entry = self.price
-        self.long_sl = self.price - self.atr * self.hp["long_slMult"]
-        self.long_tp = self.price + self.atr * self.hp["long_tpMult"]
+        self.long_sl = self.price - self.atr * self.lvars["slMult"]
+        self.long_tp = self.price + self.atr * self.lvars["tpMult"]
         self.stop_loss = qty, self.long_sl
         self.take_profit = qty, self.long_tp
 
@@ -349,8 +349,8 @@ class Vumanchu(Strategy):
         
         self.sell = qty, self.price
         self.initial_entry = self.price
-        self.short_sl = self.price + self.atr * self.hp["short_slMult"]
-        self.short_tp = self.price - self.atr * self.hp["short_tpMult"]
+        self.short_sl = self.price + self.atr * self.svars["slMult"]
+        self.short_tp = self.price - self.atr * self.svars["tpMult"]
         self.stop_loss = qty, self.short_sl
         self.take_profit = qty, self.short_tp
 
