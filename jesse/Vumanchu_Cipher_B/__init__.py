@@ -98,23 +98,23 @@ class Vumanchu(Strategy):
             {'name': 'long_slow_ema', 'title': 'Slow EMA (EMA 200)', 'type': int, 'min': 150, 'max': 400, 'default': 200},
             {'name': 'long_slMult', 'title': 'Long Stop Loss Mult', 'type': float, 'min': 1.0, 'max': 3.0, 'default': 1.6},
             {'name': 'long_tpMult', 'title': 'Long Take Profit Mult', 'type': float, 'min': 2.0, 'max': 6.0, 'default': 2.9},    
-            {'name': 'long_wtChannelLen', 'title': 'WT Channel Length', 'type': int, 'min': 9, 'max': 15, 'default': 9},
-            {'name': 'long_wtAverageLen', 'title': 'WT Average Length', 'type': int, 'min': 12, 'max': 20, 'default': 12},
+            {'name': 'long_wtChannelLen', 'title': 'WT Channel Length', 'type': int, 'min': 5, 'max': 15, 'default': 9},
+            {'name': 'long_wtAverageLen', 'title': 'WT Average Length', 'type': int, 'min': 10, 'max': 20, 'default': 12},
             {'name': 'long_wtMASource', 'title': 'WT MA Source', 'type': int, 'min': 2, 'max': 4, 'default': 3},
             {'name': 'long_wtMALen', 'title': 'WT MA Length', 'type': int, 'min': 2, 'max': 4, 'default': 3},
-            {'name': 'long_obLevel', 'title': 'WT Overbought Level 1', 'type': int, 'min': 50, 'max': 60, 'default': 53},
-            {'name': 'long_osLevel', 'title': 'WT Oversold Level 1', 'type': int, 'min': -60, 'max': -40, 'default': -53},
+            {'name': 'long_obLevel', 'title': 'WT Overbought Level 1', 'type': int, 'min': 40, 'max': 65, 'default': 53},
+            {'name': 'long_osLevel', 'title': 'WT Oversold Level 1', 'type': int, 'min': -65, 'max': -40, 'default': -53},
 
             {'name': 'short_fast_ema', 'title': 'Fast EMA (EMA 50)', 'type': int, 'min': 30, 'max': 100, 'default': 50},
             {'name': 'short_slow_ema', 'title': 'Slow EMA (EMA 200)', 'type': int, 'min': 150, 'max': 400, 'default': 200},
             {'name': 'short_slMult', 'title': 'Long Stop Loss Mult', 'type': float, 'min': 1.0, 'max': 3.0, 'default': 1.6},
             {'name': 'short_tpMult', 'title': 'Long Take Profit Mult', 'type': float, 'min': 2.0, 'max': 6.0, 'default': 2.9},    
-            {'name': 'short_wtChannelLen', 'title': 'WT Channel Length', 'type': int, 'min': 9, 'max': 15, 'default': 9},
-            {'name': 'short_wtAverageLen', 'title': 'WT Average Length', 'type': int, 'min': 12, 'max': 20, 'default': 12},
+            {'name': 'short_wtChannelLen', 'title': 'WT Channel Length', 'type': int, 'min': 5, 'max': 15, 'default': 9},
+            {'name': 'short_wtAverageLen', 'title': 'WT Average Length', 'type': int, 'min': 10, 'max': 20, 'default': 12},
             {'name': 'short_wtMASource', 'title': 'WT MA Source', 'type': int, 'min': 2, 'max': 4, 'default': 3},
             {'name': 'short_wtMALen', 'title': 'WT MA Length', 'type': int, 'min': 2, 'max': 4, 'default': 3},
-            {'name': 'short_obLevel', 'title': 'WT Overbought Level 1', 'type': int, 'min': 50, 'max': 60, 'default': 53},
-            {'name': 'short_osLevel', 'title': 'WT Oversold Level 1', 'type': int, 'min': -60, 'max': -40, 'default': -53}
+            {'name': 'short_obLevel', 'title': 'WT Overbought Level 1', 'type': int, 'min': 40, 'max': 65, 'default': 53},
+            {'name': 'short_osLevel', 'title': 'WT Oversold Level 1', 'type': int, 'min': -65, 'max': -40, 'default': -53}
         ]
 
 
