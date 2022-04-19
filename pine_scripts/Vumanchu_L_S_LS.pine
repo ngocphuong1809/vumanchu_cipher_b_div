@@ -1,0 +1,183 @@
+
+//@version=4
+strategy(title = 'VuManChu B Scalp Script with Filters', shorttitle = 'VMC Cipher_B_Scalper', overlay=true,  default_qty_type = strategy.percent_of_equity,
+         default_qty_value = 100, pyramiding = 1, initial_capital=10000)
+
+// PARAMETERS {
+// Date Ranges
+from_month              = input(defval = 01, title = "From Month", minval = 1, maxval = 12)
+from_day                = input(defval = 01, title = "From Day", minval = 1, maxval = 31)
+from_year               = input(defval = 2021, title = "From Year")
+to_month                = input(defval = 01, title = "To Month", minval = 1, maxval = 12)
+to_day                  = input(defval = 01, title = "To Day", minval = 1, maxval = 31)
+to_year                 = input(defval = 2022, title = "To Year")
+start                   = timestamp(from_year, from_month, from_day, 00, 00)  // backtest start window
+finish                  = timestamp(to_year, to_month, to_day, 23, 59)        // backtest finish window
+window                  = time >= start and time <= finish ? true : false // create function "within window of time"
+
+
+shortfast_ema               = input(68, title="Fast EMA", type = input.integer)
+shortslow_ema               = input(302, title = "Slow EMA", type = input.integer)
+shortAtrSLMultipier         = input(1.734177215    , title = "Short ATR SL Multipier", type = input.float)
+shortAtrTPMultipier         = input(4.278481013      , title = "Short ATR TP Multipier", type = input.float)
+shortwtChannelLen           = input(14, title = 'WT Channel Length', type = input.integer)
+shortwtAverageLen           = input(15, title = 'WT Average Length', type = input.integer)
+shortwtMASource             = input(ohlc4, title = 'WT MA Source', type = input.source)
+shortwtMALen                = input(3, title = 'WT MA Length', type = input.integer)
+shortobLevel                = input(59, title = 'WT Overbought Level 1', type = input.integer)
+shortosLevel                = input(-54, title = 'WT Oversold Level 1', type = input.integer)
+
+
+longfast_ema                = input(34, title="Fast EMA", type = input.integer)
+longslow_ema                = input(397, title = "Slow EMA", type = input.integer)
+longAtrSLMultipier          = input(2.291139241     , title = "Long ATR SL Multipier", type = input.float)
+longAtrTPMultipier          = input(2.810126582       , title = "Long ATR TP Multipier", type = input.float)
+longwtChannelLen            = input(11, title = 'WT Channel Length', type = input.integer)
+longwtAverageLen            = input(19, title = 'WT Average Length', type = input.integer)
+longwtMASource              = input(hlc3, title = 'WT MA Source', type = input.source)
+longwtMALen                 = input(4, title = 'WT MA Length', type = input.integer)
+longobLevel                 = input(44, title = 'WT Overbought Level 1', type = input.integer)
+longosLevel                 = input(-45, title = 'WT Oversold Level 1', type = input.integer)
+
+// RSI+MFI
+rsiMFIperiod            = input(60,title = 'MFI Period', type = input.integer)
+rsiMFIMultiplier        = input(250, title = 'MFI Area multiplier', type = input.float)
+rsiMFIPosY              = input(2.5, title = 'MFI Area Y Pos', type = input.float)
+
+// // RSI
+rsiSRC                  = input(close, title = 'RSI Source', type = input.source)
+rsiLen                  = input(14, title = 'RSI Length', type = input.integer)
+
+
+longTradesEnabled       = input(defval = false, title = 'Long Trades', inline = 'Trades', group = 'Filters')
+shortTradesEnabled      = input(defval = true, title = 'Short Trades', tooltip = 'Enable long/short trades.', inline = 'Trades', group = 'Filters')
+TradesEnabled           = input(defval = false, title = 'Trades', tooltip = 'Enable long/short trades.', inline = 'Trades', group = 'Filters')
+botRisk                 = input(3         , title = 'Bot risk % each entry', type = input.float, minval = 0.00, maxval = 100)
+botLeverage             = input(10        , title = 'Bot Leverage', type = input.float, minval = 0.00, maxval = 100)
+botPricePrecision       = input(4         , title = 'Bot order Price percision ', type = input.integer)
+botBasePrecision        = input(1         , title = 'Bot order Coin percision ', type = input.integer)
+
+//ema
+offset                  = input(title="Offset", defval=0, minval=-500, maxval=500)
+
+//atr
+atrLength               = input(defval = 14, title = 'ATR Length', minval = 1, tooltip = 'How many previous candles to use for the ATR calculation.', group = 'General')
+
+// RSI+MFI
+f_rsimfi(_period, _multiplier, _tf) => security(syminfo.tickerid, _tf, sma(((close - open) / (high - low)) * _multiplier, _period) - rsiMFIPosY)
+   
+// WaveTrend
+f_wavetrend(src, chlen, avg, malen, obLevel, osLevel, tf) =>
+    tfsrc           = security(syminfo.tickerid, tf, src)
+    esa             = ema(tfsrc, chlen)
+    de              = ema(abs(tfsrc - esa), chlen)
+    ci              = (tfsrc - esa) / (0.015 * de)
+    wt1             = security(syminfo.tickerid, tf, ema(ci, avg))
+    wt2             = security(syminfo.tickerid, tf, sma(wt1, malen))
+    wtVwap          = wt1 - wt2
+    wtOversold      = wt2 <= osLevel
+    wtOverbought    = wt2 >= obLevel
+    wtCross         = cross(wt1, wt2)
+    wtCrossUp       = wt2 - wt1 <= 0
+    wtCrossDown     = wt2 - wt1 >= 0
+    wtCrosslast     = cross(wt1[2], wt2[2])
+    wtCrossUplast   = wt2[2] - wt1[2] <= 0
+    wtCrossDownlast = wt2[2] - wt1[2] >= 0
+    [wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCrosslast, wtCrossUplast, wtCrossDownlast, wtVwap]
+
+// // } FUNCTIONS  
+
+// CALCULATE INDICATORS {
+
+// RSI
+rsi                 = rsi(rsiSRC, rsiLen)
+
+// RSI + MFI Area
+rsiMFI              = f_rsimfi(rsiMFIperiod, rsiMFIMultiplier, timeframe.period)
+
+// Calculates WaveTrend
+
+[longwt1, longwt2, longwtOversold, longwtOverbought, longwtCross, longwtCrossUp, longwtCrossDown, longwtCross_last, longwtCrossUp_last, longwtCrossDown_last, longwtVwap] = f_wavetrend(longwtMASource, longwtChannelLen, longwtAverageLen, longwtMALen, longobLevel, longosLevel, timeframe.period)
+[shortwt1, shortwt2, shortwtOversold, shortwtOverbought, shortwtCross, shortwtCrossUp, shortwtCrossDown, shortwtCross_last, shortwtCrossUp_last, shortwtCrossDown_last, shortwtVwap] = f_wavetrend(shortwtMASource, shortwtChannelLen, shortwtAverageLen, shortwtMALen, shortobLevel, shortosLevel, timeframe.period)
+
+ 
+
+// Get EMAs
+
+longema50               = ema(close,longfast_ema)
+longema200              = ema(close, longslow_ema)
+longema50pullback       = close > longema50 - (longema50 * 0.05) and close < longema50 + (longema50 * 0.05)
+
+shortema50               = ema(close,shortfast_ema)
+shortema200              = ema(close, shortslow_ema)
+shortema50pullback       = close > shortema50 - (shortema50 * 0.05) and close < shortema50 + (shortema50 * 0.05)
+
+
+//EMA Filters
+
+emaLong             = close > longema200 and longema50pullback
+emaShort            = close < shortema200 and shortema50pullback
+
+
+
+//LA WT BUY/SELL
+
+wtBuy               = longwt2 <=0 and longwt1 <=0 and rsiMFI >0 and emaLong
+wtSell              = shortwt2 >=0 and shortwt1 >=0 and rsiMFI <0 and emaShort
+
+// Buy signal.
+
+buySignal = longwtCross and longwtCrossUp and longwtOversold and wtBuy
+
+
+// Sell signal
+
+sellSignal = shortwtCross and shortwtCrossDown and shortwtOverbought and wtSell
+
+// } CALCULATE INDICATORS
+
+
+// LOGIC ============================================================================================================
+// the open signals when not already into a position
+bool openLongPosition           = (longTradesEnabled or TradesEnabled) and window and buySignal 
+bool openShortPosition          = (shortTradesEnabled or TradesEnabled) and window and sellSignal 
+bool closeLongPosition          = (longTradesEnabled or TradesEnabled) and window
+bool closeShortPosition         = (shortTradesEnabled or TradesEnabled) and window
+
+bool validOpenLongPosition      = openLongPosition and not (strategy.position_size > 0)
+bool validOpenShortPosition     = openShortPosition and not (strategy.position_size < 0)
+bool validCloseLongPosition     = closeLongPosition and strategy.position_size > 0
+bool validCloseShortPosition    = closeShortPosition and strategy.position_size < 0
+
+// close price when the valid open signal was triggered
+float openPrice                 = valuewhen(validOpenLongPosition or validOpenShortPosition, close, 0)
+
+// atr when last open signal was triggered
+float openAtr                   = valuewhen(validOpenLongPosition or validOpenShortPosition, atr(atrLength), 0)
+
+float longStopLoss              = openPrice - longAtrSLMultipier * openAtr
+float longTakeProfit            = openPrice + longAtrTPMultipier * openAtr
+float shortStopLoss             = openPrice + shortAtrSLMultipier * openAtr
+float shortTakeProfit           = openPrice - shortAtrTPMultipier * openAtr
+
+riskQtyLong                     = (strategy.equity * botRisk) / (openAtr * longAtrSLMultipier * 100)
+riskQtyShort                    = (strategy.equity * botRisk) / (openAtr * shortAtrSLMultipier * 100)
+
+qtyLong                         = max(min(round(riskQtyLong, 2), (strategy.equity * botLeverage - 1) / openPrice ), 0)
+qtyShort                        = max(min(round(riskQtyShort, 2), (strategy.equity * botLeverage - 1) / openPrice), 0)
+
+enterLongPosition               = openLongPosition and (qtyLong != 0)
+enterShortPosition              = openShortPosition  and (qtyShort != 0 )
+
+
+ // STRATEGY EXECUTION {        
+strategy.entry("Entry Long", true , qty = qtyLong, when = enterLongPosition)
+    
+strategy.entry("Entry Short", false, qty = qtyShort, when = enterShortPosition)
+
+strategy.exit(id = "Exit Long", from_entry = "Entry Long", limit = longTakeProfit, stop = longStopLoss, when = validCloseLongPosition)
+
+strategy.exit(id = "Exit short", from_entry = "Entry Short", limit = shortTakeProfit, stop = shortStopLoss, when = validCloseShortPosition)
+
+// } STRATEGY EXECUTION
+
